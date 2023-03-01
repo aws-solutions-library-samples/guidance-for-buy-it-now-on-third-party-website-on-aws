@@ -1,0 +1,264 @@
+{
+    "StartAt": "Capture Order Details",
+    "States": {
+      "Capture Order Details": {
+        "Next": "Validate Payment",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "start"
+          }
+        }
+      },
+      "Validate Payment": {
+        "Next": "Is Payment Valid?",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "ResultPath": "$.error",
+            "Next": "Order Exception Handler"
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "validate"
+          }
+        }
+      },
+      "Is Payment Valid?": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.payment_valid",
+            "StringEquals": "FAILED",
+            "Next": "Fail"
+          },
+          {
+            "Variable": "$.payment_valid",
+            "StringEquals": "SUCCEEDED",
+            "Next": "Add Customer"
+          }
+        ]
+      },
+      "Fail": {
+        "Type": "Fail",
+        "Error": "Order Job returned FAILED",
+        "Cause": "Order Failed"
+      },
+      "Order Exception Handler": {
+        "Next": "Fail",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "error.$": "$.error.Cause",
+            "step": "failed"
+          }
+        }
+      },
+      "Create Order": {
+        "Next": "Was Order Created?",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "ResultPath": "$.error",
+            "Next": "Order Exception Handler"
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "create_order",
+            "customer_id.$": "$.customer_id"
+          }
+        }
+      },
+      "Add Customer": {
+        "Next": "Create Order",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "add_customer"
+          }
+        }
+      },
+      "Was Order Created?": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.order_placed",
+            "StringEquals": "FAILED",
+            "Next": "Fail"
+          },
+          {
+            "Variable": "$.order_placed",
+            "StringEquals": "SUCCEEDED",
+            "Next": "Capture 3P Order"
+          }
+        ]
+      },
+      "Capture 3P Order": {
+        "Next": "Send Email",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "capture_order",
+            "order_id.$": "$.order_id",
+            "customer_id.$": "$.customer_id"
+          }
+        }
+      },
+      "Send Email": {
+        "Next": "Confirmation Email Sent?",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Type": "Task",
+        "OutputPath": "$.Payload",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:991639198278:function:guidance-for-buy-it-now-o-OrderManagerLambdaD751FB-HNgmXaiaKZcI",
+          "Payload": {
+            "body.$": "$.body",
+            "header.$": "$.header",
+            "step": "send_email",
+            "customer_id.$": "$.customer_id",
+            "order_id.$": "$.order_id"
+          }
+        }
+      },
+      "Confirmation Email Sent?": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.order_status",
+            "StringEquals": "FAILED",
+            "Next": "Fail"
+          },
+          {
+            "Variable": "$.order_status",
+            "StringEquals": "SUCCEEDED",
+            "Next": "Succeeded"
+          }
+        ]
+      },
+      "Succeeded": {
+        "Type": "Succeed",
+        "Comment": "Order succeeded"
+      }
+    },
+    "TimeoutSeconds": 300
+  }
