@@ -22,6 +22,7 @@ from aws_lambda_powertools import (
 )
 
 sfn = boto3.client('stepfunctions')
+sns = boto3.client('sns')
 
 logger = Logger()
 tracer = Tracer()
@@ -309,49 +310,75 @@ def orderManagerHandler(event, context):
         }
         return response
     if step == "send_email":
-        # The email body for recipients with non-HTML email clients.
-        BODY_TEXT = ("Order successfully placed \r\n"
-                     f"Order ID: {event['order_id']}\n"
-                     f"Customer Name: {event['body']['customer']['name']}\n"
-                     f"Customer ID: {event['customer_id']}\n"
-                    )
-
-        # The HTML body of the email.
-        BODY_HTML = f"""<html>
-        <head></head>
-        <body>
-          <h1>Order successfully placed</h1>
-          <p>
-          Order ID: {event['order_id']}<br>
-          Customer Name: {event['body']['customer']['name']}<br>
-          Customer ID: {event['customer_id']}<br>
-          </p>
-        </body>
-        </html>
-            """            
-        template_data = {"order_id": event['order_id'], "customer_id": event['customer_id'], "customer_name": event['body']['customer']['name']}
-        #template_data = "{\"order_id\": \""+event['order_id']+"\", \"customer_id\": \""+event['customer_id']+"\"}"
-        logger.info(f"Template Data: {template_data}")
-        logger.info(f"Template Data String: {json.dumps(template_data)}")
-        #logger.info(f"Template Data String: {template_data}")
-        email_response = send_templated_email(sender=VERIFIED_IDENTITY, 
-            receiver=VERIFIED_IDENTITY, 
-            template_name=EMAIL_TEMPLATE_NAME, 
-            template_data=json.dumps(template_data))
-        #email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=json.dumps(template_data))
-        #email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=template_data)
-        #email_response = send_email("vjprince@amazon.com","vjprince@amazon.com","Order placed", html_content=BODY_HTML, text_content=BODY_TEXT, charset="UTF-8")
-        if email_response != None:
-            logger.info(f"Order Response Metadata: {email_response}")
-            response = {
-                'order_status': "SUCCEEDED" if email_response["ResponseMetadata"]["HTTPStatusCode"] == 200 else "FAILED"
-            }
+        topic = "BuyitNowOrder"
+        sns_topic_arn = "".join([tp['TopicArn'] for tp in sns.list_topics()['Topics'] if topic in tp['TopicArn']])
+        status = "SUCCEEDED"
+        message = "Unexpected error message"
+        subject = "Unexpected subject"
+        try:
+            status = event["status"] 
+        except KeyError:
+            logger.info(f"Key Not found: event['status']")
+        if(status == "SUCCEEDED"):
+            subject = "Order successfull"
+            message = ("Order successfully placed \r\n\n"
+                         f"Order ID: {event['order_id']}\n"
+                         f"Customer Name: {event['body']['customer']['name']}\n"
+                         f"Customer ID: {event['customer_id']}\n"
+                        )
         else:
-            response = {
-                'order_status': "FAILED"
-            }
-        logger.info(f"Order Email Status: {response}")
+            subject = "Order failed"
+            message = "The order could not be placed"
+        sns.publish(TopicArn=sns_topic_arn, Message=message, Subject=subject)
+        response = {
+            'statusCode': 200,
+            'order_status': status,
+            'body': "SNS confirmation email sent"
+        }
         return response
+        ## The email body for recipients with non-HTML email clients.
+        #BODY_TEXT = ("Order successfully placed \r\n"
+        #             f"Order ID: {event['order_id']}\n"
+        #             f"Customer Name: {event['body']['customer']['name']}\n"
+        #             f"Customer ID: {event['customer_id']}\n"
+        #            )
+
+        ## The HTML body of the email.
+        #BODY_HTML = f"""<html>
+        #<head></head>
+        #<body>
+        #  <h1>Order successfully placed</h1>
+        #  <p>
+        #  Order ID: {event['order_id']}<br>
+        #  Customer Name: {event['body']['customer']['name']}<br>
+        #  Customer ID: {event['customer_id']}<br>
+        #  </p>
+        #</body>
+        #</html>
+        #    """            
+        #template_data = {"order_id": event['order_id'], "customer_id": event['customer_id'], "customer_name": event['body']['customer']['name']}
+        ##template_data = "{\"order_id\": \""+event['order_id']+"\", \"customer_id\": \""+event['customer_id']+"\"}"
+        #logger.info(f"Template Data: {template_data}")
+        #logger.info(f"Template Data String: {json.dumps(template_data)}")
+        ##logger.info(f"Template Data String: {template_data}")
+        #email_response = send_templated_email(sender=VERIFIED_IDENTITY, 
+        #    receiver=VERIFIED_IDENTITY, 
+        #    template_name=EMAIL_TEMPLATE_NAME, 
+        #    template_data=json.dumps(template_data))
+        ##email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=json.dumps(template_data))
+        ##email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=template_data)
+        ##email_response = send_email("vjprince@amazon.com","vjprince@amazon.com","Order placed", html_content=BODY_HTML, text_content=BODY_TEXT, charset="UTF-8")
+        #if email_response != None:
+        #    logger.info(f"Order Response Metadata: {email_response}")
+        #    response = {
+        #        'order_status': "SUCCEEDED" if email_response["ResponseMetadata"]["HTTPStatusCode"] == 200 else "FAILED"
+        #    }
+        #else:
+        #    response = {
+        #        'order_status': "FAILED"
+        #    }
+        #logger.info(f"Order Email Status: {response}")
+        #return response
     response = {
         'statusCode': 200,
         'body': json.dumps("Step was missing")

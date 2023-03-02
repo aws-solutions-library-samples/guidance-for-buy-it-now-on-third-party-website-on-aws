@@ -1,5 +1,6 @@
 from constructs import Construct
 from aws_cdk import (
+    CfnParameter,
     Duration,
     Aws,
     Stack,
@@ -13,7 +14,9 @@ from aws_cdk import (
     aws_stepfunctions_tasks as tasks,
     aws_logs as logs,
     aws_secretsmanager as secretsmanager,
-    aws_ses as ses
+    aws_ses as ses,
+    aws_sns as sns,
+    aws_sns_subscriptions as subscriptions
 )
 import json
 
@@ -572,6 +575,19 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         payment_gateway_url = self.node.try_get_context("payment_gateway")
         order_gateway_url = self.node.try_get_context("order_gateway")
         verified_identity = self.node.try_get_context("verified_identity")
+
+        my_topic = sns.Topic(self, "BuyitNowOrder")
+        my_topic.topic_arn
+        #email_address = CfnParameter(self, "email-param")
+        my_topic.add_subscription(subscriptions.EmailSubscription(verified_identity))
+        order_manager_lambda.add_to_role_policy(
+                iam.PolicyStatement(
+                        actions=['sns:Publish', 'sns:ListTopics'],
+                        effect= iam.Effect.ALLOW,
+                        resources=['*']
+                )
+        )
+
         if(payment_gateway_url):
             order_manager_lambda.add_environment('PAYMENT_GATEWAY', payment_gateway_url)
         if(order_gateway_url):
