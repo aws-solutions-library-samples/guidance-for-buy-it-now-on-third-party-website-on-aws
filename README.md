@@ -48,7 +48,7 @@ python3 -m venv .venv
 ```
 $ source .venv/bin/activate
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;If you are a Windows platform, you would activate the virtualenv like this:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;If you are a Windows platform, you would activate the virtualenv like this:
 ```
 % .venv\Scripts\activate.bat
 ```
@@ -69,7 +69,7 @@ pip install requests --target ./python/lib/python3.9/site-packages
 ```
 $ cdk ls
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You should see 2 stacks Thirdparty-MockStack and guidance-for-buy-it-now-on-third-party-website-on-aws stack
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You should see 2 stacks Thirdparty-MockStack and guidance-for-buy-it-now-on-third-party-website-on-aws stack
 
 7. You will first need to deploy the Thirdparty-MockStack. This stack is used to mock third party resources in our guidance. This stack will spin up 1 API Gateway with 3 mock endpoints and 1 DynamoDB table.
    - DynamoDB: This is used to store product details like name and price from different stores
@@ -146,7 +146,6 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ | jq 
 2. When the customer is ready to buy the products from the site, the below commands will be executed. We are adding 2 products to the customers cart
 ```
 curl --json '{"partial_cart_id": "0001","product_id":"101","quantity":"2"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts
-
 curl --json '{"partial_cart_id": "0001","product_id":"102","quantity":"3"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts
 ```
 3. When the customer is ready to view the total cost of items to be purchased from the 2 stores, the below command is run. In this command, we are able to pass a loyalty id for a store to get special deals if applicable. This allows the customer to choose the store where they want to place the order.
@@ -160,7 +159,7 @@ curl -H "is_valid:true" -H "place_order:true" \
 https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/order_manager/ | jq .
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The above command will start a step function that does the steps shown in the diagram below.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The above command will start a step function that does the steps shown in the diagram below.
 ![Step Function Image](/assets/images/stepfunctions_graph_light.png)
 
 ### Step function steps:
@@ -170,13 +169,13 @@ The step function is used to manage the various steps that need to occur when an
 
 2. In "Validate Payment" step, we call the mock "Payment Gateway" to validate the payment details are valid. We are using APPID and APPTOKEN as the username and password that will be used to authenticate with the payment processor. Since these values are sensitive, we create these values as secrets in the AWS Secret Manager. In this demo, we will automatically create a secret in case the AWS Secret Manager does not have entries for APPID and APPTOKEN.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "is_valid" is used to let the mock "Payment Gateway" return a success or failure response.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "is_valid" is used to let the mock "Payment Gateway" return a success or failure response.
 
 3. If the payment details are valid, we add the customer and store loyalty details to the DynamoDB table
 
 4. In "Create Order" step, we call the mock "Order Gateway" to place the order.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "place_order" is used to let the mock "Order Gateway" return a siccess or failure response.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "place_order" is used to let the mock "Order Gateway" return a siccess or failure response.
 
 5. If the order was successfully created, we capture the third party order details in our DynamoDB table
 
