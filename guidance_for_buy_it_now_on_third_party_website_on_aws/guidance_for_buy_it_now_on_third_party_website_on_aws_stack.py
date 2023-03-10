@@ -45,10 +45,14 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        lambdaLayers = lambda_.LayerVersion(self, 'lambda-layer',
+        lambdaLayers = lambda_.LayerVersion(self, 'requests-layer',
                                             code=lambda_.AssetCode(
-                                                'lambda/layers/'),
+                                                'lambda/layers/requests/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
+        #powertools_layer = lambda_.LayerVersion(self, 'aws-lambda-powertools',
+        #                                    code=lambda_.AssetCode(
+        #                                        'lambda/layers/aws-lambda-powertools/'),
+        #                                    compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
 
         POWERTOOLS_ARN = f"arn:aws:lambda:{Aws.REGION}:017000801446:layer:AWSLambdaPowertoolsPythonV2:23"
         powertools_layer = lambda_.LayerVersion\
