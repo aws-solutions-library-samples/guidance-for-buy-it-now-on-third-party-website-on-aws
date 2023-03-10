@@ -22,10 +22,10 @@ import aws_cdk as cdk
 import json
 
 
-POWERTOOLS_BASE_NAME = 'AWSLambdaPowertools'
-# Find latest from github.com/awslabs/aws-lambda-powertools-python/releases
-POWERTOOLS_VER = '2.6.0'
-POWERTOOLS_ARN = 'arn:aws:serverlessrepo:eu-west-1:057560766410:applications/aws-lambda-powertools-python-layer'
+#POWERTOOLS_BASE_NAME = 'AWSLambdaPowertools'
+## Find latest from github.com/awslabs/aws-lambda-powertools-python/releases
+#POWERTOOLS_VER = '2.6.0'
+#POWERTOOLS_ARN = 'arn:aws:serverlessrepo:eu-west-1:057560766410:applications/aws-lambda-powertools-python-layer'
 
 
 class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
@@ -49,8 +49,11 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                             code=lambda_.AssetCode(
                                                 'lambda/layers/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
-        powertools_layer = lambda_.LayerVersion.from_layer_version_arn(self, id="lambda-powertools",
-                                                                       layer_version_arn=f"arn:aws:lambda:{Aws.REGION}:017000801446:layer:AWSLambdaPowertoolsPythonV2:23")
+
+        POWERTOOLS_ARN = f"arn:aws:lambda:{Aws.REGION}:017000801446:layer:AWSLambdaPowertoolsPythonV2:23"
+        powertools_layer = lambda_.LayerVersion\
+            .from_layer_version_arn(self, id="lambda-powertools", layer_version_arn=POWERTOOLS_ARN)
+
         #powertools_layer = lambda_.LayerVersion.from_layer_version_arn(self, id="lambda-powertools",
         #                                                               layer_version_arn=f"arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV2:18")
         # secrets_manager_layer = lambda_.LayerVersion.from_layer_version_arn(self, id="secrets-layer",
