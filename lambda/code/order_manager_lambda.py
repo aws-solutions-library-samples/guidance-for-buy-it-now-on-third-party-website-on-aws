@@ -14,7 +14,9 @@ from utils.common_utils import (
     send_templated_email,
     create_3p_order,
     get_user_id,
-    get_cart_id
+    get_cart_id,
+    pre_order,
+    get_partial_cart_id
 )
 from aws_lambda_powertools import (
     Logger,
@@ -29,21 +31,26 @@ tracer = Tracer()
 
 client = boto3.client('dynamodb')
 dynamodb_ = boto3.resource('dynamodb')
-#secretsmanager_client = boto3.client('secretsmanager')
+# secretsmanager_client = boto3.client('secretsmanager')
 session = boto3.session.Session()
 secretsmanager_client = session.client(
     service_name='secretsmanager',
     region_name=session.region_name
 )
 
+SUCCESS_VALUE = "SUCCEEDED"
+FAILED_VALUE = "FAILED"
+
+
 @tracer.capture_lambda_handler
 def orderManagerHandler(event, context):
     print(event)
-    
-    #CUSTOMER_URL = os.environ['CUSTOMER_URL']
-    #ORDERS_TABLE = os.environ['ORDERS_TABLE']
+
+    # CUSTOMER_URL = os.environ['CUSTOMER_URL']
+    # ORDERS_TABLE = os.environ['ORDERS_TABLE']
     PAYMENT_GATEWAY = os.environ['PAYMENT_GATEWAY']
     ORDER_GATEWAY = os.environ['ORDER_GATEWAY']
+    PRE_ORDER_GATEWAY = os.environ['PRE_ORDER_GATEWAY']
     EMAIL_TEMPLATE_NAME = os.environ['EMAIL_TEMPLATE_NAME']
     VERIFIED_IDENTITY = os.environ['VERIFIED_IDENTITY']
     BUYITNOW_TABLE_NAME = os.environ['BUYITNOW_TABLE']
@@ -51,33 +58,49 @@ def orderManagerHandler(event, context):
     PK = None
     SK = None
     SK_PREORDER = "order#PREORDER"
-    #APPID = os.environ['APPID']
-    #APPTOKEN = os.environ['APPTOKEN']
-    #orders_table = dynamodb_.Table(ORDERS_TABLE)
+    # APPID = os.environ['APPID']
+    # APPTOKEN = os.environ['APPTOKEN']
+    # orders_table = dynamodb_.Table(ORDERS_TABLE)
 
     logger.info(f"ORDER EVENT: {event}")
 
     step = None
     try:
-        step = event["step"] 
+        step = event["step"]
     except KeyError:
         logger.info(f"Key Not found: event['step']")
 
     logger.info(f"STEP: {step}")
     if step == "failed":
         logger.info("Failure triggered")
-        error_message = json.loads(event['error'])['errorMessage']
-        logger.info(f"ERROR: {error_message}")
-        cart_id = json.loads(error_message)['cart_id']
+        error_json = event['error']
+        logger.info(f"error_json: {error_json}")
+        # error_message = json.loads(event['error']['Cause'])['errorMessage']
+        # logger.info(f"ERROR: {error_message}")
+        # cart_id = json.loads(error_message)['cart_id']
+        # error_json = json.loads(error_message)
+        cart_id = error_json['body']['cart_id']
         logger.info(f"Failed Cart ID: {cart_id}")
-        #error_message = json.dumps(error_message)
-        #logger.info(f"Error message dump: {error_message}")
-        #error_message = json.loads(error_message)
-        #logger.info(f"Error message loads: {error_message}")
-        #logger.info(f"Error message loads type: {type(error_message)}")
-        #logger.info(f"Error Cart ID: {json.loads(error_message)}")
-        #logger.info(f"Error Cart ID: {json.loads(error_message)['cart_id']}")
-        #logger.info(f"Error Cart ID: {json.loads(event['error'])['errorMessage']['body']['cart_id']}")
+        logger.info(f"Body: {error_json['body']}")
+        logger.info(f"Headers: {error_json['header']}")
+        customer_id = "Not Available"
+        order_id = "Not Available"
+        try:
+            customer_id = event["customer_id"]
+        except KeyError:
+            logger.info("No customer_id available")
+        try:
+            order_id = event["order_id"]
+        except KeyError:
+            logger.info("No order_id available")
+        # error_message = json.dumps(error_message)
+        # logger.info(f"Error message dump: {error_message}")
+        # error_message = json.loads(error_message)
+        # logger.info(f"Error message loads: {error_message}")
+        # logger.info(f"Error message loads type: {type(error_message)}")
+        # logger.info(f"Error Cart ID: {json.loads(error_message)}")
+        # logger.info(f"Error Cart ID: {json.loads(error_message)['cart_id']}")
+        # logger.info(f"Error Cart ID: {json.loads(event['error'])['errorMessage']['body']['cart_id']}")
         PK = cart_id
         SK = SK_PREORDER
         buyitnow_table.update_item(
@@ -87,11 +110,18 @@ def orderManagerHandler(event, context):
             },
             UpdateExpression="SET #order_status=:os",
             ExpressionAttributeValues={
-                ':os': 'FAILED'},
+                ':os': FAILED_VALUE},
             ReturnValues="UPDATED_NEW")
         response = {
             'statusCode': 200,
-            'body': "Order Failed, cleanup completed"
+            'order_status': FAILED_VALUE,
+            # 'body': "Order Failed, cleanup completed"
+            'body': error_json['body'],
+            'header': error_json['header'],
+            'customer_id': customer_id,
+            'order_id': order_id,
+            'message': get_message(event, FAILED_VALUE),
+            'subject': get_subject(event, FAILED_VALUE)
         }
         return response
     logger.info(f"BODY: {event['body']}")
@@ -107,14 +137,16 @@ def orderManagerHandler(event, context):
     payment = data["payment"]
     shipping = data["shipping"]
     loyalty_id = data["loyalty_id"]
-    customer.update({"store_loyalty": [{"store_id": store_id, "loyalty_id": loyalty_id}]})
+    customer.update(
+        {"store_loyalty": [{"store_id": store_id, "loyalty_id": loyalty_id}]})
     print(f"Cart ID: {cart_id}, Store ID: {store_id}")
-    #print(f"Cart ID: {cart_id}, Store ID: {store_id}, CUSTOMER_URL: {CUSTOMER_URL}")
+    # print(f"Cart ID: {cart_id}, Store ID: {store_id}, CUSTOMER_URL: {CUSTOMER_URL}")
     header = None
     try:
         header = event["header"]
     except KeyError:
         logger.info("No header available")
+
     if step == "start":
         # Create pre-order
         PK = cart_id
@@ -128,50 +160,59 @@ def orderManagerHandler(event, context):
             ExpressionAttributeValues={
                 ':os': 'STARTED'},
             ReturnValues="UPDATED_NEW")
+        pre_order_response = pre_order(cart_id, header, PRE_ORDER_GATEWAY)
+        pre_order_state = pre_order_response['pre_order_state']
+        logger.info(
+            f"Pre-order Response: {pre_order_state}")
+        if "INVENTORY LOCKED" != pre_order_state:
+            raise Exception("Pre-Order Failed")
         response = {
             'body': event["body"],
             'header': header,
             'cart_id': cart_id,
+            'pre_order_state': pre_order_state
         }
         return response
     if step == "validate":
         logger.info(f"payment gateway url: {PAYMENT_GATEWAY}")
-        payment_valid = is_payment_valid(secretsmanager_client, payment, header, PAYMENT_GATEWAY)
-        #payment_valid = is_payment_valid_appid_apptoken(secretsmanager_client, APPID, APPTOKEN)
+        payment_valid = is_payment_valid(
+            secretsmanager_client, payment, header, PAYMENT_GATEWAY)
+        # payment_valid = is_payment_valid_appid_apptoken(secretsmanager_client, APPID, APPTOKEN)
         logger.info(f"Payment {payment_valid}")
         response = {
             'body': event["body"],
             'header': header,
             'cart_id': cart_id,
-            'payment_valid': "SUCCEEDED" if payment_valid else "FAILED"
+            'payment_valid': SUCCESS_VALUE if payment_valid else FAILED_VALUE
         }
-        #if not payment_valid: raise Exception(json.dumps({"cart_id":cart_id}))
-        if not payment_valid: raise Exception(json.dumps(response))
+        # if not payment_valid: raise Exception(json.dumps({"cart_id":cart_id}))
+        if not payment_valid:
+            raise Exception(json.dumps(response))
         return response
     if step == "add_customer":
-        #add_cust_response = add_customer(CUSTOMER_URL, customer, header)
-        #customer_response = add_cust_response.json()
-        #logger.info(f"Customer Response: {customer_response}")
-        #customer_id = None
+        # add_cust_response = add_customer(CUSTOMER_URL, customer, header)
+        # customer_response = add_cust_response.json()
+        # logger.info(f"Customer Response: {customer_response}")
+        # customer_id = None
         customer_id = uuid.uuid4().hex
         PK = cart_id
         user_id = get_user_id(event["header"])
         SK = "userid#"+user_id
         buyitnow_table.update_item(
-                Key={'PK': PK, 'SK': SK},
-                ExpressionAttributeNames={
-                    "#customer_id": "customer_id",
-                    "#name": "name",
-                    "#email": "email",
-                    "#address": "address",
-                    "#payment_id": "payment_id",
-                    "#payment_token": "payment_token",
-                    "#loyalty_id": "loyalty_id",
-                    "#store_id": "store_id",
-                    "#shipping_name": "shipping_name",
-                    "#shipping_address": "shipping_address",
-                },
-                UpdateExpression="SET #customer_id=:c, \
+            Key={'PK': PK, 'SK': SK},
+            ExpressionAttributeNames={
+                "#customer_id": "customer_id",
+                "#name": "name",
+                "#email": "email",
+                "#address": "address",
+                "#payment_id": "payment_id",
+                "#payment_token": "payment_token",
+                "#loyalty_id": "loyalty_id",
+                "#store_id": "store_id",
+                "#shipping_name": "shipping_name",
+                "#shipping_address": "shipping_address",
+            },
+            UpdateExpression="SET #customer_id=:c, \
                     #name=:n, \
                     #email=:e, \
                     #address=:a, \
@@ -181,19 +222,19 @@ def orderManagerHandler(event, context):
                     #store_id=:si, \
                     #shipping_name=:sn, \
                     #shipping_address=:sa",
-                ExpressionAttributeValues={
-                    ':c': customer_id, 
-                    ':n': customer['name'], 
-                    ':e': customer['email'], 
-                    ':a': customer['address'], 
-                    ':pi': payment['app_id'], 
-                    ':pt': payment['app_token'], 
-                    ':l': loyalty_id, 
-                    ':si': store_id, 
-                    ':sn': shipping['name'], 
-                    ':sa': shipping['address'], },
-                ReturnValues="UPDATED_NEW")
-        #buyitnow_table.put_item(
+            ExpressionAttributeValues={
+                ':c': customer_id,
+                ':n': customer['name'],
+                ':e': customer['email'],
+                ':a': customer['address'],
+                ':pi': payment['app_id'],
+                ':pt': payment['app_token'],
+                ':l': loyalty_id,
+                ':si': store_id,
+                ':sn': shipping['name'],
+                ':sa': shipping['address'], },
+            ReturnValues="UPDATED_NEW")
+        # buyitnow_table.put_item(
         #    Item={
         #        "PK": cart_id,
         #        "id": customer_id,
@@ -203,11 +244,11 @@ def orderManagerHandler(event, context):
         #        "payment": data.get("payment", None),
         #        "store_loyalty": data.get("store_loyalty", None), # List item containing store_id and loyalty_id
         #    })
-        #try:
+        # try:
         #    customer_id = customer_response["customer_id"]
-        #except KeyError:
+        # except KeyError:
         #    logger.info(f"Customer Id not available")
-        #logger.info(f"Customer ID: {customer_id}")
+        # logger.info(f"Customer ID: {customer_id}")
         response = {
             'body': event["body"],
             'header': header,
@@ -217,24 +258,25 @@ def orderManagerHandler(event, context):
     if step == "create_order":
         # Create Order
         # API Gateway can mock the rest call
-        #order_id = get_mock_order_id()
-        order_response = create_3p_order(secretsmanager_client, payment, shipping, header, ORDER_GATEWAY)
+        # order_id = get_mock_order_id()
+        order_response = create_3p_order(
+            secretsmanager_client, payment, shipping, header, ORDER_GATEWAY)
         order_placed = order_response["order_placed"]
         logger.info(f"Order Placed: {order_placed}")
         PK = cart_id
-        #user_id = get_user_id(event["header"])
-        #SK = "userid#"+user_id
-        if order_placed :
+        # user_id = get_user_id(event["header"])
+        # SK = "userid#"+user_id
+        if order_placed:
             order_id = order_response["order_id"]
             logger.info(f"Order ID: {order_id}")
-            ##orders_table.put_item(
-            ##    Item={
-            ##        "order_id": order_id,
-            ##        "customer_id": event["customer_id"],
-            ##        "cart_id": cart_id,
-            ##    })
-            #SK = "order#"+order_id
-            #buyitnow_table.update_item(
+            # orders_table.put_item(
+            # Item={
+            # "order_id": order_id,
+            # "customer_id": event["customer_id"],
+            # "cart_id": cart_id,
+            # })
+            # SK = "order#"+order_id
+            # buyitnow_table.update_item(
             #    Key={'PK': PK, 'SK': SK},
             #    ExpressionAttributeNames={
             #        "#order_id": "id",
@@ -244,11 +286,11 @@ def orderManagerHandler(event, context):
             #    ExpressionAttributeValues={
             #        ':oi': order_id, ':os': 'PLACED'},
             #    ReturnValues="UPDATED_NEW")
-            #SK = SK_PREORDER
-            #buyitnow_table.delete_item(Key={"PK": PK, "SK": SK})
-            #sub_cart_id = get_cart_id(event["header"])
-            #SK = "userid#"+sub_cart_id
-            #buyitnow_table.update_item(
+            # SK = SK_PREORDER
+            # buyitnow_table.delete_item(Key={"PK": PK, "SK": SK})
+            # sub_cart_id = get_cart_id(event["header"])
+            # SK = "userid#"+sub_cart_id
+            # buyitnow_table.update_item(
             #    Key={'PK': PK, 'SK': SK},
             #    ExpressionAttributeNames={
             #        "#cart_status": "status",
@@ -262,14 +304,14 @@ def orderManagerHandler(event, context):
                 'header': header,
                 'customer_id': event["customer_id"],
                 'order_id': order_id,
-                'order_placed': "SUCCEEDED" if order_placed else "FAILED"
+                'order_placed': SUCCESS_VALUE if order_placed else FAILED_VALUE
             }
-        else :
+        else:
             response = {
                 'body': event["body"],
                 'header': header,
                 'customer_id': event["customer_id"],
-                'order_placed': "SUCCEEDED" if order_placed else "FAILED"
+                'order_placed': SUCCESS_VALUE if order_placed else FAILED_VALUE
             }
         logger.info(f"Order Created Response: {json.dumps(response)}")
         return response
@@ -291,8 +333,11 @@ def orderManagerHandler(event, context):
             ReturnValues="UPDATED_NEW")
         SK = SK_PREORDER
         buyitnow_table.delete_item(Key={"PK": PK, "SK": SK})
-        sub_cart_id = get_cart_id(event["header"])
-        SK = "cart#"+sub_cart_id
+        # sub_cart_id = get_cart_id(event["header"])
+        partial_cart_id = get_partial_cart_id(cart_id)
+        logger.info(
+            f"Partial Cart ID: {partial_cart_id} from Cart ID: {cart_id}")
+        SK = "cart#"+partial_cart_id
         buyitnow_table.update_item(
             Key={'PK': PK, 'SK': SK},
             ExpressionAttributeNames={
@@ -306,81 +351,113 @@ def orderManagerHandler(event, context):
             'body': event["body"],
             'header': header,
             'customer_id': event["customer_id"],
-            'order_id': event["order_id"]
+            'order_id': event["order_id"],
+            'order_status': SUCCESS_VALUE,
+            'message': get_message(event, SUCCESS_VALUE),
+            'subject': get_subject(event, SUCCESS_VALUE)
         }
+        logger.info(f"Capture Order Response: {response}")
         return response
     if step == "send_email":
         topic = "BuyitNowOrder"
-        sns_topic_arn = "".join([tp['TopicArn'] for tp in sns.list_topics()['Topics'] if topic in tp['TopicArn']])
-        status = "SUCCEEDED"
+        sns_topic_arn = "".join([tp['TopicArn'] for tp in sns.list_topics()[
+                                'Topics'] if topic in tp['TopicArn']])
+        logger.info(f"SNS Topic ARN: {sns_topic_arn}")
+        status = SUCCESS_VALUE
         message = "Unexpected error message"
         subject = "Unexpected subject"
         try:
-            status = event["status"] 
+            status = event["order_status"]
         except KeyError:
-            logger.info(f"Key Not found: event['status']")
-        if(status == "SUCCEEDED"):
+            logger.info(f"Key Not found: event['order_status']")
+        if (status == SUCCESS_VALUE):
             subject = "Order successfull"
             message = ("Order successfully placed \r\n\n"
-                         f"Order ID: {event['order_id']}\n"
-                         f"Customer Name: {event['body']['customer']['name']}\n"
-                         f"Customer ID: {event['customer_id']}\n"
-                        )
+                       f"Order ID: {event['order_id']}\n"
+                       f"Customer Name: {event['body']['customer']['name']}\n"
+                       f"Customer ID: {event['customer_id']}\n"
+                       )
         else:
             subject = "Order failed"
             message = "The order could not be placed"
-        sns.publish(TopicArn=sns_topic_arn, Message=message, Subject=subject)
+        sns_response = sns.publish(
+            TopicArn=sns_topic_arn, Message=message, Subject=subject)
+        logger.info(f"SNS Response: {sns_response}")
         response = {
             'statusCode': 200,
             'order_status': status,
             'body': "SNS confirmation email sent"
         }
         return response
-        ## The email body for recipients with non-HTML email clients.
-        #BODY_TEXT = ("Order successfully placed \r\n"
+        # The email body for recipients with non-HTML email clients.
+        # BODY_TEXT = ("Order successfully placed \r\n"
         #             f"Order ID: {event['order_id']}\n"
         #             f"Customer Name: {event['body']['customer']['name']}\n"
         #             f"Customer ID: {event['customer_id']}\n"
         #            )
 
-        ## The HTML body of the email.
-        #BODY_HTML = f"""<html>
-        #<head></head>
-        #<body>
+        # The HTML body of the email.
+        # BODY_HTML = f"""<html>
+        # <head></head>
+        # <body>
         #  <h1>Order successfully placed</h1>
         #  <p>
         #  Order ID: {event['order_id']}<br>
         #  Customer Name: {event['body']['customer']['name']}<br>
         #  Customer ID: {event['customer_id']}<br>
         #  </p>
-        #</body>
-        #</html>
-        #    """            
-        #template_data = {"order_id": event['order_id'], "customer_id": event['customer_id'], "customer_name": event['body']['customer']['name']}
-        ##template_data = "{\"order_id\": \""+event['order_id']+"\", \"customer_id\": \""+event['customer_id']+"\"}"
-        #logger.info(f"Template Data: {template_data}")
-        #logger.info(f"Template Data String: {json.dumps(template_data)}")
-        ##logger.info(f"Template Data String: {template_data}")
-        #email_response = send_templated_email(sender=VERIFIED_IDENTITY, 
-        #    receiver=VERIFIED_IDENTITY, 
-        #    template_name=EMAIL_TEMPLATE_NAME, 
+        # </body>
+        # </html>
+        #    """
+        # template_data = {"order_id": event['order_id'], "customer_id": event['customer_id'], "customer_name": event['body']['customer']['name']}
+        # template_data = "{\"order_id\": \""+event['order_id']+"\", \"customer_id\": \""+event['customer_id']+"\"}"
+        # logger.info(f"Template Data: {template_data}")
+        # logger.info(f"Template Data String: {json.dumps(template_data)}")
+        # logger.info(f"Template Data String: {template_data}")
+        # email_response = send_templated_email(sender=VERIFIED_IDENTITY,
+        #    receiver=VERIFIED_IDENTITY,
+        #    template_name=EMAIL_TEMPLATE_NAME,
         #    template_data=json.dumps(template_data))
-        ##email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=json.dumps(template_data))
-        ##email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=template_data)
-        ##email_response = send_email("vjprince@amazon.com","vjprince@amazon.com","Order placed", html_content=BODY_HTML, text_content=BODY_TEXT, charset="UTF-8")
-        #if email_response != None:
+        # email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=json.dumps(template_data))
+        # email_response = send_templated_email("vjprince@amazon.com","vjprince@amazon.com", EMAIL_TEMPLATE_NAME, template_data=template_data)
+        # email_response = send_email("vjprince@amazon.com","vjprince@amazon.com","Order placed", html_content=BODY_HTML, text_content=BODY_TEXT, charset="UTF-8")
+        # if email_response != None:
         #    logger.info(f"Order Response Metadata: {email_response}")
         #    response = {
-        #        'order_status': "SUCCEEDED" if email_response["ResponseMetadata"]["HTTPStatusCode"] == 200 else "FAILED"
+        #        'order_status': SUCCEEDED" if email_response["ResponseMetadata"]["HTTPStatusCode"] == 200 else "FAILED"
         #    }
-        #else:
+        # else:
         #    response = {
         #        'order_status': "FAILED"
         #    }
-        #logger.info(f"Order Email Status: {response}")
-        #return response
+        # logger.info(f"Order Email Status: {response}")
+        # return response
     response = {
         'statusCode': 200,
         'body': json.dumps("Step was missing")
     }
     return response
+
+
+def get_message(event, status):
+    message = "Unexpected error message"
+    if (status == SUCCESS_VALUE):
+        message = ("Order successfully placed \r\n\n"
+                   f"Order ID: {event['order_id']}\n"
+                   f"Customer Name: {event['body']['customer']['name']}\n"
+                   f"Customer ID: {event['customer_id']}\n"
+                   )
+    else:
+        message = "The order could not be placed"
+    logger.info(f"Message: {message}")
+    return message
+
+
+def get_subject(event, status):
+    subject = "Unexpected subject"
+    if (status == SUCCESS_VALUE):
+        subject = "Order successfull"
+    else:
+        subject = "Order failed"
+    logger.info(f"Subject: {subject}")
+    return subject
