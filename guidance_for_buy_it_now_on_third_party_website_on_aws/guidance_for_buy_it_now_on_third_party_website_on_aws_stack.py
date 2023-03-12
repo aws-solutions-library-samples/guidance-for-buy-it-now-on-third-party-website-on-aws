@@ -84,13 +84,13 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         self.setOrderManager(lambdaLayers=lambdaLayers,
                              powertools_layer=powertools_layer)
 
-        CfnOutput(self, "Products Management URL", value=self.product_url)
+        CfnOutput(self, "Products Management URL", value=self.product_url, export_name="buy-it-now-products-management-url")
         # CfnOutput(self, "Customers Management URL", value=self.customer_url)
-        CfnOutput(self, "Cart Management URL", value=self.cart_url)
-        CfnOutput(self, "Store Management URL", value=self.store_url)
+        CfnOutput(self, "Cart Management URL", value=self.cart_url, export_name="buy-it-now-cart-management-url")
+        CfnOutput(self, "Store Management URL", value=self.store_url, export_name="buy-it-now-store-management-url")
         CfnOutput(self, "Store Product Management URL",
-                  value=self.store_product_url)
-        CfnOutput(self, "Order Management URL", value=self.order_manager_url)
+                  value=self.store_product_url, export_name="buy-it-now-store-product-management-url")
+        CfnOutput(self, "Order Management URL", value=self.order_manager_url, export_name="buy-it-now-order-management-url")
 
     def setProduct(self):
         # Create Products Table in DynamoDB
