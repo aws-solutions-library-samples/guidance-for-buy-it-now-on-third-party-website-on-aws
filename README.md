@@ -1,7 +1,7 @@
 
-# Guidance for Buy it Now on third party websites on AWS
+# Guidance for Buy-it-Now on third party websites on AWS
 
-This repository has a CDK app to demonstrate how to build a buy-it-now capability from a third party store. This CDK app will use Lambda, Step Functions, DynamoDB, API Gateway, Simple Notification Service (SNS) and Secrets Manager.
+This repository has a CDK app to demonstrate how to build a Buy-it-Now capability from a third party store. This CDK app will use Lambda, Step Functions, DynamoDB, API Gateway, Simple Notification Service (SNS) and Secrets Manager.
 
 ### Table of Contents
 - [Introduction](#introduction)
@@ -12,15 +12,16 @@ This repository has a CDK app to demonstrate how to build a buy-it-now capabilit
   - [Buy-it-Now Process](#buy-it-now-process)
   - [Step function steps](#step-function-steps)
 - [Cleanup](#cleanup)
+- [FAQ](#faq)
 
 ## Introduction
 
 The Buy-it-Now tool enables consumers to purchase Consumer packaged goods(CPG) products directly from retailers without leaving the brand website.
 
-The Buy-it-Now guidance enables the consumers that visit CPG brand websites to learn about the brand and to buy the product while remaining on the brand website.  This guidance enables CPGs to offer the consumer the option to purchase their favorite brand items directly from retail sites like Walmart.com, Amazon.com and Target.com and still remain in the brand website.  This guidance enables CPGs to keep valuable consumers on their brand sites while still offering the ability to to purchase their products from online retailer.  This enables CPGs to maintain a high quality brand experience (capture 1st party data on the consumer based on the purchase) where as today the consumer typically leaves the brand website and complete the purchase on the retailer site with limited brand information.  CPG can offer consumers a broader set of brand offerings including new innovative test products only available at select retailers.  The Buy-It-Now guidance enables CPGs to still send the sales transaction to the retailer however they maintain the consumer experience on their brand site.
+The Buy-it-Now guidance enables the consumers that visit CPG brand websites to learn about the brand and to buy the product while remaining on the brand website.  This guidance enables CPGs to offer the consumer the option to purchase their favorite brand items directly from retail sites like Walmart.com, Amazon.com and Target.com and still remain in the brand website.  This guidance enables CPGs to keep valuable consumers on their brand sites while still offering the ability to to purchase their products from online retailer.  This enables CPGs to maintain a high quality brand experience (capture 1st party data on the consumer based on the purchase) where as today the consumer typically leaves the brand website and complete the purchase on the retailer site with limited brand information.  CPG can offer consumers a broader set of brand offerings including new innovative test products only available at select retailers.  The Buy-it-Now guidance enables CPGs to still send the sales transaction to the retailer however they maintain the consumer experience on their brand site.
 
 ## Pre-requisites
-- python3 with venv package
+- python3 v3.9.x with venv package
 - Node
 - AWS CLI
 - AWS Account with CLI access
@@ -57,21 +58,14 @@ $ source .venv/bin/activate
 $ pip install -r requirements.txt
 ```
 
-5. Confirm the lambda/layers/python/lib/python3.9/site-packages folder is not empty. If not, run the below command
-
-```
-cd lambda/layers
-pip install requests --target ./python/lib/python3.9/site-packages
-```
-
-6. At this point you can view the available stacks to deploy using the command
+5. At this point you can view the available stacks to deploy using the command
 
 ```
 $ cdk ls
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You should see 2 stacks Thirdparty-MockStack and guidance-for-buy-it-now-on-third-party-website-on-aws stack
 
-7. You will first need to deploy the Thirdparty-MockStack. This stack is used to mock third party resources in our guidance. This stack will spin up 1 API Gateway with 3 mock endpoints and 1 DynamoDB table.
+6. You will first need to deploy the Thirdparty-MockStack. This stack is used to mock third party resources in our guidance. This stack will spin up 1 API Gateway with 3 mock endpoints and 1 DynamoDB table.
    - DynamoDB: This is used to store product details like name and price from different stores
    - API Gateway:
      - Payment Gateway: This mock endpoint allows us to validate the payment details submitted by the customer
@@ -82,7 +76,7 @@ $ cdk ls
 cdk deploy Thirdparty-MockStack
 ```
 
-8. You will deploy the `guidance-for-buy-it-now-on-third-party-website-on-aws` stack using the below command. You will need to pass a valid email address to get the order confirmation/failure emails as you test the stack.
+7. You will deploy the `guidance-for-buy-it-now-on-third-party-website-on-aws` stack using the below command. You will need to pass a valid email address to get the order confirmation/failure emails as you test the stack.
 ```
 cdk deploy guidance-for-buy-it-now-on-third-party-website-on-aws -c verified_identity=<EMAIL ADDRESS>
 ```
@@ -100,7 +94,7 @@ guidance-for-buy-it-now-on-third-party-website-on-aws.StoreManagementURL = https
 guidance-for-buy-it-now-on-third-party-website-on-aws.StoreProductManagementURL = https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products
 ```
 
-9. You will get an email to email provided by the above command from AWS SNS to confirm subscription to the SNS topic. Click the "Confirm subscription" link. This is needed to allow AWS SNS to send emails of the status of the order.
+8. You will get an email to the email address provided by the above command from AWS SNS to confirm subscription to the SNS topic. Click the "Confirm subscription" link. This is needed to allow AWS SNS to send emails of the status of the order.
 
 You are now ready to test the guidance.
 
@@ -110,32 +104,92 @@ In this section, we will first populate some test data and then we will go throu
 
 ### Initialization of Products, Stores and Products in Stores
 
-Populate sample products to be used for testing
+Populate products to be used for testing
 ```
-curl --json '{"id":"101","name":"Product 1","price": "99.99"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
+--json  @- << EOF
+{
+    "id":"101",
+    "name":"Product 1",
+    "price": "99.99"
+}
+EOF
 
-curl --json '{"id":"102","name":"Product 2","price": "199.99"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
+--json  @- << EOF
+{
+    "id":"102",
+    "name":"Product 2",
+    "price": "199.99"
+}
+EOF
 ```
 
-Populate a list of third party sample stores for testing
+Populate a list of third party stores for testing
 ```
-curl --json '{"id":"2001","name":"Store 1","address": "1600 Pennsylvania Avenue, DC"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
+--json  @- << EOF
+{
+    "id":"2001",
+    "name":"Store 1",
+    "address": "1600 Pennsylvania Avenue, DC"
+}
+EOF
 
-curl --json '{"id":"2002","name":"Store 2","address": "1600 Pennsylvania Avenue, DC"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
+--json  @- << EOF
+{
+    "id":"2002",
+    "name":"Store 2",
+    "address": "1600 Pennsylvania Avenue, DC"
+}
+EOF
 ```
 
-Populate the 2 third part stores created above with the 2 test products we created.
+Populate the 2 third party stores created above with the 2 products as shown below.
 ```
-curl --json '{"store_id":"2001","product_id":"101","product_name":"Product 1","price": "89.99"} https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+--json  @- << EOF
+{
+    "store_id":"2001",
+    "product_id":"101",
+    "product_name":"Product 1",
+    "price": "89.99"
+}
+EOF
 
-curl --json '{"store_id":"2002","product_id":"101","product_name":"Product 1","price": "79.99"} https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+--json  @- << EOF
+{
+    "store_id":"2002",
+    "product_id":"101",
+    "product_name":"Product 1",
+    "price": "79.99"
+}
+EOF
 
-curl --json '{"store_id":"2001","product_id":"102","product_name":"Product 2","price": "59.99"} https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+--json  @- << EOF
+{
+    "store_id":"2001",
+    "product_id":"102",
+    "product_name":"Product 2",
+    "price": "59.99"
+}
+EOF
 
-curl --json '{"store_id":"2002","product_id":"102","product_name":"Product 2","price": "49.99"} https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+--json  @- << EOF
+{
+    "store_id":"2002",
+    "product_id":"102",
+    "product_name":"Product 2",
+    "price": "49.99"
+}
+EOF
 ```
 ### Buy-it-Now Process
-We are now ready to proceed with viewing the products, adding the products to be purchased, view the price of products from the 2 stores we created for testing. The flow chart below shows the order process steps.
+We are now ready to proceed with viewing the products, adding the products to be purchased into a cart, viewing the price of products from the 2 stores we created for testing and placing an order. The flow chart below shows the order process steps.
 
 ![Order Process Steps](/assets/images/order_flowchart.png)
 
@@ -145,41 +199,85 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ | jq 
 ```
 2. When the customer is ready to buy the products from the site, the below commands will be executed. We are adding 2 products to the customers cart
 ```
-curl --json '{"partial_cart_id": "0001","product_id":"101","quantity":"2"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts
-curl --json '{"partial_cart_id": "0001","product_id":"102","quantity":"3"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/ \
+--json @- << EOF
+{
+    "partial_cart_id": "0001",
+    "product_id":"101",
+    "quantity":"2"
+}
+EOF
+
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/ \
+--json @- << EOF
+{
+    "partial_cart_id": "0001",
+    "product_id":"102",
+    "quantity":"3"
+}
+EOF
 ```
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;To get the contents of the cart, you can run the below command
+```
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/user_id%23guest-cart_id%230001 | jq .
+```
+
 3. When the customer is ready to view the total cost of items to be purchased from the 2 stores, the below command is run. In this command, we are able to pass a loyalty id for a store to get special deals if applicable. This allows the customer to choose the store where they want to place the order.
 ```
-curl --json '{"cart_id":"user_id#guest-cart_id#0001","store_id": "2001","loyalty_id": "1234567890"}' https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products/ | jq .
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products/ \
+--json @- << EOF | jq .
+{
+    "cart_id":"user_id#guest-cart_id#0001",
+    "store_id": "2001",
+    "loyalty_id": "1234567890"
+}
+EOF
 ```
 4. When the customer places the order, the below command should be run. In the below command, you will notice 2 headers "is_valid" and "place_order". The reason for these headers is to simulate failures in the step function that is used to place the order. You should receive an email with the status of the order.
 ```
-curl -H "is_valid:true" -H "place_order:true" \
---json '{"cart_id": "user_id#guest-cart_id#0001","store_id": "2001","customer": {"name":"John Doe","email":"john@doe.com","address": "1600 Pennsylvania Avenue, DC"},"payment": {"app_id": "APPID","app_token": "APPTOKEN"},"shipping": {"name":"John Doe 1","address": "1600 Pennsylvania Avenue, DC"},"loyalty_id": "1234567890"}' \
-https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/order_manager/ | jq .
-```
-
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/order_manager/ \
+-H "is_valid:true" \
+-H "place_order:true" \
+--json @- << EOF | jq .
+{
+    "cart_id": "user_id#guest-cart_id#0001",
+    "store_id": "2001",
+    "customer": {
+        "name":"John Doe",
+        "email":"john@doe.com",
+        "address": "1600 Pennsylvania Avenue, DC"
+    },
+    "payment": {
+        "app_id": "APPID",
+        "app_token": "APPTOKEN"
+    },
+    "shipping": {
+        "name":"John Doe 1",
+        "address": "1600 Pennsylvania Avenue, DC"
+    },
+    "loyalty_id": "1234567890"
+}
+EOF
+``` 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The above command will start a step function that does the steps shown in the diagram below.
 ![Step Function Image](/assets/images/stepfunctions_graph_light.png)
 
 ### Step function steps:
 The step function is used to manage the various steps that need to occur when an order is placed. We use the step "Order Exception Handler" to handle failure scenarios. In this guidance, we update the order status as FAILED in the DynamoDB when this step is triggered. This step will also send a failure email if you have subscribed to the SNS Topic.
 
-1. In the "Capture Order Details", we update the DynamoDB to capture the order event. We also call the third party mock "Pre-Order Gateway". The goal here is to let the third part store know about the order and lock the inventory based on the order details.
+1. In the `Capture Order Details`, we update the DynamoDB to capture the order event. We also call the third party mock "Pre-Order Gateway". The goal here is to let the third part store know about the order and lock the inventory based on the order details.
 
-2. In "Validate Payment" step, we call the mock "Payment Gateway" to validate the payment details are valid. We are using APPID and APPTOKEN as the username and password that will be used to authenticate with the payment processor. Since these values are sensitive, we create these values as secrets in the AWS Secret Manager. In this demo, we will automatically create a secret in case the AWS Secret Manager does not have entries for APPID and APPTOKEN.
+2. In `Validate Payment` step, we call the mock "Payment Gateway" to validate the payment details are valid. We are using APPID and APPTOKEN as the username and password that will be used to authenticate with the payment processor. Since these values are sensitive, we create these values as secrets in the AWS Secret Manager. In this demo, we will automatically create a secret in case the AWS Secret Manager does not have entries for APPID and APPTOKEN.<br><br>
+The header "is_valid" is used to let the mock "Payment Gateway" return a success or failure response.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "is_valid" is used to let the mock "Payment Gateway" return a success or failure response.
+3. If the payment details are valid, we add the customer and store loyalty details to the DynamoDB table in the `Add Customer` step.
 
-3. If the payment details are valid, we add the customer and store loyalty details to the DynamoDB table
+4. In `Create Order` step, we call the mock "Order Gateway" to place the order.<br><br>
+The header "place_order" is used to let the mock "Order Gateway" return a success or failure response.
 
-4. In "Create Order" step, we call the mock "Order Gateway" to place the order.
+5. If the order was successfully created, we capture the third party order details in our DynamoDB table in the `Capture 3P Order` step.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The header "place_order" is used to let the mock "Order Gateway" return a siccess or failure response.
-
-5. If the order was successfully created, we capture the third party order details in our DynamoDB table
-
-6. The "Publish message" step is used to publish the state of the order to the SNS Topic. If you subscribed to the SNS Topic you received in the email, then you should see an email notification with the status of the order.
+6. The `Publish message` step is used to publish the state of the order to the SNS Topic. If you subscribed to the SNS Topic you received in the email, then you should see an email notification with the status of the order.
 
 ## Cleanup
 After testing the guidance, you will be able to clean up the AWS resources using the below commands
@@ -187,3 +285,49 @@ After testing the guidance, you will be able to clean up the AWS resources using
 cdk destroy guidance-for-buy-it-now-on-third-party-website-on-aws
 cdk destroy Thirdparty-MockStack
 ```
+
+## FAQ
+- Why am I having trouble getting the aws-lambda-powertools layer in my region?<br><br>
+The aws-lambda-powertools ARN is available in most regions but not all. The available regions are in https://awslabs.github.io/aws-lambda-powertools-python. If your region does not have this layer, you can download this module and add it to a custom layer by following the steps below.
+  - Navigate to `lambda/layers`
+  ```
+  cd lambda/layers
+  ```
+  - Create a new folder `aws-lambda-powertools` and navigate into it
+  ```
+  mkdir aws-lambda-powertools
+  cd aws-lambda-powertools
+  ```
+  - Run the below command
+  ```
+  pip install "aws-lambda-powertools[all]" --target ./python/lib/python3.9/site-packages
+  ```
+  - In the guidance stack, replace the existing `powertools_layer` variable with the below
+  ```
+  powertools_layer = lambda_.LayerVersion(self, 'aws-lambda-powertools',
+                                            code=lambda_.AssetCode(
+                                                'lambda/layers/aws-lambda-powertools/'),
+                                            compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
+  ```
+  - Run the `cdk deploy` command shown below
+  ```
+  cdk deploy guidance-for-buy-it-now-on-third-party-website-on-aws -c verified_identity=<EMAIL ADDRESS>
+  ```
+- How do I upgrade the `requests` lambda layer?<br><br>
+To upgrade the version of `requests` module, you can follow the below steps
+  - Navigate to `lambda/layers` folder
+  ```
+  cd lambda/layers
+  ```
+  - Delete the existing `requests` layer
+  ```
+  rm -rf requests
+  ```
+  - Install the latest requests module
+  ```
+  pip install requests --target ./python/lib/python3.9/site-packages
+  ```
+  - Run the `cdk deploy` command shown below to update the stack
+  ```
+  cdk deploy guidance-for-buy-it-now-on-third-party-website-on-aws -c verified_identity=<EMAIL ADDRESS>
+  ```
