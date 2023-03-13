@@ -287,45 +287,46 @@ cdk destroy Thirdparty-MockStack
 ```
 
 ## FAQ
-- Why am I having trouble getting the aws-lambda-powertools layer in my region?<br><br>
-The aws-lambda-powertools ARN is available in most regions but not all. The available regions are in https://awslabs.github.io/aws-lambda-powertools-python. If your region does not have this layer, you can download this module and add it to a custom layer by following the steps below.
+- How do I add a new lambda layer in this guidance?<br><br>
+If the updates you made to this guidance require you to add a dependency as a lambda layer, follow the steps below:
   - Navigate to `lambda/layers`
   ```
   cd lambda/layers
   ```
-  - Create a new folder `aws-lambda-powertools` and navigate into it
+  - Create a new folder `<MY-DEPENDENCY-NAME>` and navigate into it
   ```
-  mkdir aws-lambda-powertools
-  cd aws-lambda-powertools
+  mkdir <MY-DEPENDENCY-NAME>
+  cd <MY-DEPENDENCY-NAME>
   ```
   - Run the below command
   ```
-  pip install "aws-lambda-powertools[all]" --target ./python/lib/python3.9/site-packages
+  pip install "<MY-DEPENDENCY-NAME>" --target ./python/lib/python3.9/site-packages
   ```
-  - In the guidance stack, replace the existing `powertools_layer` variable with the below
+  - In the guidance stack, add your layer `<MY-DEPENDENCY-NAME>` using the below snippet
   ```
-  powertools_layer = lambda_.LayerVersion(self, 'aws-lambda-powertools',
+  my_dependency_name_layer = lambda_.LayerVersion(self, '<MY-DEPENDENCY-NAME>',
                                             code=lambda_.AssetCode(
-                                                'lambda/layers/aws-lambda-powertools/'),
+                                                'lambda/layers/<MY-DEPENDENCY-NAME>/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
   ```
+  - Add the `my_dependency_name_layer` layer to any lambda function that needs it
   - Run the `cdk deploy` command shown below
   ```
   cdk deploy guidance-for-buy-it-now-on-third-party-website-on-aws -c verified_identity=<EMAIL ADDRESS>
   ```
-- How do I upgrade the `requests` lambda layer?<br><br>
-To upgrade the version of `requests` module, you can follow the below steps
+- How do I upgrade the `requests` and `aws-lambda-powertools[all]` lambda layers?<br><br>
+To upgrade the version of the layers , you can follow the below steps
   - Navigate to `lambda/layers` folder
   ```
-  cd lambda/layers
+  cd lambda/layers/requests-powertools
   ```
-  - Delete the existing `requests` layer
+  - Install the latest `requests` and `aws-lambda-powertools[all]` modules
   ```
-  rm -rf requests
-  ```
-  - Install the latest requests module
-  ```
-  pip install requests --target ./python/lib/python3.9/site-packages
+  pip install requests \
+  --target ./python/lib/python3.9/site-packages --upgrade
+
+  pip install "aws-lambda-powertools[all]" \
+  --target ./python/lib/python3.9/site-packages --upgrade 
   ```
   - Run the `cdk deploy` command shown below to update the stack
   ```
