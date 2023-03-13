@@ -16,10 +16,6 @@ from utils.common_utils import (
     get_stores,
     multiply
 )
-from decimal import (
-    Decimal,
-    ROUND_HALF_UP
-)
 
 dynamodb_ = boto3.resource('dynamodb')
 client = boto3.client('dynamodb')
@@ -37,7 +33,6 @@ def storeProductHandler(event, context):
     product_id = None
     store_id = None
     if event["pathParameters"] != None and event["httpMethod"] == "GET":
-        # store_product = event["pathParameters"]["store_product"]
         try:
             product_id = event["pathParameters"]["product_id"]
             store_id = event["pathParameters"]["store_id"]
@@ -73,8 +68,7 @@ def storeProductHandler(event, context):
                 'body': json.dumps('Store Product Added')
             }
         #
-        # NEED TO ADD LOGIC TO PASS A CART_ID and get response
-        # with Total Cost as JSON response
+        # Get the total cost of the items in the cart
         #
         elif cart_id != None:
             try:
@@ -82,10 +76,6 @@ def storeProductHandler(event, context):
                 if cart_contents != None or len(cart_contents) == 0:
                     logger.info(f"Cart Id: {cart_id} does not exist")
                 logger.info(f"Cart contains cart_contents: {cart_contents}")
-                # for i in cart_contents:
-                #    print(f"Product: {json.dumps(i, cls=DecimalEncoder)}")
-                #    print(f"Product ID: {i['product_id']}")
-                #    print(f"Quantity: {i['quantity']}")
                 stores = get_stores(stores_url=STORES_URL)
                 logger.info(f"Stores: {stores}")
                 store_obj = []
@@ -105,23 +95,15 @@ def storeProductHandler(event, context):
                     for product in cart_contents:
                         if not product['SK'].startswith("product"):
                             continue
-                        # product_id = product["product_id"]
                         product_id = product["id"]
                         quantity = product["quantity"]
                         logger.info(
                             f"Store ID: {store_id}, Product ID: {product_id}, Quantity: {quantity}")
                         data = store_product_table.get_item(
                             Key={"product_id": product_id, "store_id": store_id})
-                        # logger.info(f"DATA: {data}")
-                        # data = client.get_item(TableName=TABLE_NAME, Key={"product_id": {"S": product_id},"store_id": {"S": store_id}})
-                        # if "Item" in data:
                         try:
-                            # item = json.dumps(data["Item"], cls=DecimalEncoder)
                             item = data["Item"]
                             price = item["price"]
-                            # total_price = Decimal(price)*Decimal(quantity)
-                            # cents = Decimal('.01')
-                            # money = total_price.quantize(cents, ROUND_HALF_UP)
                             money = multiply(price, quantity)
                             logger.info(
                                 f"Store ID: {store_id}, Product ID: {product_id}, Price: {price}, Total Price: {money}, Quantity: {quantity}")
@@ -132,16 +114,6 @@ def storeProductHandler(event, context):
                         except KeyError:
                             logger.info(
                                 f"No Products for Store ID: {store_id}, Product ID: {product_id}")
-                            # response = {
-                            #    "statusCode": 200,
-                            #    "body": json.dumps(item)
-                            # }
-                        # else:
-                        #    logger.info(f"No Products for Store ID: {store_id}, Product ID: {product_id}")
-                            # response = {
-                            #    "statusCode": 200,
-                            #    "body": json.dumps(f"Store {store_id} does not have product {product_id}")
-                            # }
                     if len(json_obj) > 0:
                         logger.info(
                             f"JSON_OBJ is not empty \
@@ -169,12 +141,7 @@ def storeProductHandler(event, context):
                 'statusCode': 200,
                 'body': json.dumps(store_obj, cls=DecimalEncoder)
             }
-            # response = {
-            #    'statusCode': 200,
-            #    'body': json.dumps('REPLACE THIS WITH JSON OUTPUT')
-            # }
     elif event["httpMethod"] == "GET" and product_id != None and store_id == None:
-        # data = client.get_item(TableName=TABLE_NAME, Key={"product_id": {"S": product_id}})
         data = store_product_table.query(
             KeyConditionExpression=Key("product_id").eq(product_id))
         logger.info(f"DATA: {data}")

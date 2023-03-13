@@ -1,8 +1,3 @@
-import os
-import json
-import uuid
-import requests
-import boto3
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import (
     Tracer,

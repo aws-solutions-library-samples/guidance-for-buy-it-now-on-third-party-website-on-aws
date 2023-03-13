@@ -20,10 +20,8 @@ from utils.secret_utils import (
 logger = Logger()
 tracer = Tracer()
 
-
 class NotFoundException(Exception):
     pass
-
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -31,21 +29,13 @@ class DecimalEncoder(json.JSONEncoder):
             return str(obj)
         return json.JSONEncoder.default(self, obj)
 
-
 @tracer.capture_method
 def get_product(product_id):
     get_product_url = os.environ["GET_PRODUCT_URL"]
     logger.info(f'Product Url: {get_product_url}')
-    # product_id_url = get_product_url+f"products/{product_id}"
     product_id_url = get_product_url+f"/{product_id}"
     logger.info(product_id_url)
     product = requests.get(product_id_url)
-    if product != None:
-        productJson = product.json()
-        # logger.info(f"Type: {type(productJson)}")
-        # logger.info(f"Len: {len(productJson)}")
-        # logger.info(f"ID: {productJson['id']}")
-        # logger.info(f"Prod ID: {productJson['id']['S']}")
     logger.info(f"JSON: {product.json()}")
     logger.info(f"TEXT: {product.text}")
     try:
@@ -55,12 +45,10 @@ def get_product(product_id):
         raise NotFoundException
     return response
 
-
 @tracer.capture_method
 def get_cart(cart_id, cart_url):
     logger.info(f'Cart Url: {cart_url}')
     encoded_cart_id = requests.utils.quote(cart_id)
-    # cart_id_url = cart_url+f"carts/{encoded_cart_id}"
     cart_id_url = cart_url+f"/{encoded_cart_id}"
     logger.info(f'Cart ID URL: {cart_id_url}')
     cart = requests.get(cart_id_url)
@@ -68,19 +56,14 @@ def get_cart(cart_id, cart_url):
     logger.info(f"Cart Data: {response}")
     return response
 
-
 @tracer.capture_method
 def get_stores(stores_url):
     logger.info(f'Stores Url: {stores_url}')
-    # all_stores_url = f"{stores_url}stores"
-    # logger.info(f'All Stores URL: {all_stores_url}')
-    # stores = requests.get(all_stores_url)
     logger.info(f'All Stores URL: {stores_url}')
     stores = requests.get(stores_url)
     response = stores.json()
     logger.info(f"Stores Data: {response}")
     return response
-
 
 @tracer.capture_method
 def add_customer(customer_url, customer, headers):
@@ -101,8 +84,6 @@ def add_customer(customer_url, customer, headers):
 # Example: If we use cognito, we could pass in the jwt token
 # to this method that could be sent to the cognitojwt.decode() method
 # to get the "sub" (globally unique ID for the user)
-
-
 @tracer.capture_method
 def get_user_id(headers):
     user_id = "guest"
@@ -113,11 +94,9 @@ def get_user_id(headers):
     logger.info("Authorization: "+user_id)
     return user_id
 
-
 @tracer.capture_method
 def isGuest(headers):
     return "guest" == get_user_id(headers)
-
 
 @tracer.capture_method
 def validate_payment_appid_apptoken(secretsmanager_client, appid, apptoken):
@@ -129,7 +108,6 @@ def validate_payment_appid_apptoken(secretsmanager_client, appid, apptoken):
         f"SECRET app_id[{appid}]: {app_id}, app_token[{apptoken}]: {app_token}")
     response = True
     return response
-
 
 @tracer.capture_method
 def create_3p_order(secretsmanager_client, payment, shipping, headers, create_order_url):
@@ -160,7 +138,6 @@ def create_3p_order(secretsmanager_client, payment, shipping, headers, create_or
         logger.info(f"header valid")
         response = requests.post(
             create_order_url, json=json_body, headers=valid_header)
-        # response = requests.post(payment_processor_url, json=json_body, headers=headers)
     else:
         logger.info(f"header invalid")
         response = requests.post(create_order_url, json=json_body)
@@ -168,7 +145,6 @@ def create_3p_order(secretsmanager_client, payment, shipping, headers, create_or
     response_json = response.json()
     logger.info(f"order response: {response_json}")
     return response_json
-
 
 @tracer.capture_method
 def pre_order(cart_id, headers, pre_order_url):
@@ -184,7 +160,6 @@ def pre_order(cart_id, headers, pre_order_url):
     response_json = response.json()
     logger.info(f"pre_order payment response: {response_json}")
     return response_json
-
 
 @ tracer.capture_method
 def validate_payment(secretsmanager_client, payment, headers, payment_processor_url):
@@ -214,7 +189,6 @@ def validate_payment(secretsmanager_client, payment, headers, payment_processor_
         logger.info(f"header valid")
         response = requests.post(payment_processor_url,
                                json=json_body, headers=valid_header)
-        # response = requests.post(payment_processor_url, json=json_body, headers=headers)
     else:
         logger.info(f"header invalid")
         response = requests.post(payment_processor_url, json=json_body)
@@ -224,20 +198,17 @@ def validate_payment(secretsmanager_client, payment, headers, payment_processor_
     valid = response_json["valid"]
     return valid
 
-
 @ tracer.capture_method
 def is_payment_valid(secretsmanager_client, payment, headers, payment_processor_url):
     payment_response = validate_payment(
         secretsmanager_client, payment, headers, payment_processor_url)
     return payment_response
 
-
 @ tracer.capture_method
 def is_payment_valid_appid_apptoken(secretsmanager_client, appid, apptoken):
     payment_response = validate_payment_appid_apptoken(
         secretsmanager_client, appid, apptoken)
     return payment_response
-
 
 @ tracer.capture_method
 def get_partial_cart_id(cart_id):
@@ -275,7 +246,6 @@ def multiply(value1, value2):
     cents=Decimal('.01')
     money=total_price.quantize(cents, ROUND_HALF_UP)
     return money
-
 
 @ tracer.capture_method
 def generate_header(cart_id):
@@ -345,15 +315,6 @@ def send_templated_email(sender, receiver, template_name, template_data):
             Template = template_name,
             TemplateData = template_data
         )
-        # response = ses_client.send_templated_email(Source='vjprince@amazon.com',
-        #    Destination={
-        #        'ToAddresses': [
-        #            'vjprince@amazon.com',
-        #        ],
-        #    },
-        #    Template='OrderEmailConfirmation',
-        #    TemplateData='{ \"order_id\":\"795e0d9e53bb4925a0ea6ff0fa0dcaf2\", \"customer_id\":\"10001\" }'
-        # )
         logger.info(f"Email response: {response}")
     # Display an error if something goes wrong.
     except ClientError as e:
