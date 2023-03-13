@@ -27,7 +27,7 @@ The Buy-it-Now guidance enables the consumers that visit CPG brand websites to l
 - AWS Account with CLI access
 - curl 7.82.0 or greater.
   - A REST client like insomnia or postman can be used instead of curl
-- jq (optional if using curl)
+- jq
 
 More details about the pre-requisites to run the CDK app can be found in https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_prerequisites
 
@@ -104,7 +104,9 @@ In this section, we will first populate some test data and then we will go throu
 
 ### Initialization of Products, Stores and Products in Stores
 
-Populate products to be used for testing
+<details>
+  <summary>Step 1) Populate products to be used for testing</summary>
+
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
 --json  @- << EOF
@@ -124,8 +126,11 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
 }
 EOF
 ```
+</details>
 
-Populate a list of third party stores for testing
+<details>
+  <summary>Step 2) Populate a list of third party stores for testing</summary>
+
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
 --json  @- << EOF
@@ -145,8 +150,12 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
 }
 EOF
 ```
+</details>
 
-Populate the 2 third party stores created above with the 2 products as shown below.
+<details>
+  <summary>Step 3) Populate 2 third party stores with 2 products</summary>
+
+
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
 --json  @- << EOF
@@ -188,6 +197,8 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products 
 }
 EOF
 ```
+</details>
+
 ### Buy-it-Now Process
 We are now ready to proceed with viewing the products, adding the products to be purchased into a cart, viewing the price of products from the 2 stores we created for testing and placing an order. The flow chart below shows the order process steps.
 
