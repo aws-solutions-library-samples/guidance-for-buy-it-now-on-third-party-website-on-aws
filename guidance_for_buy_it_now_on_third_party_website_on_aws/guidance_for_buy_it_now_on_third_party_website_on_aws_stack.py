@@ -16,7 +16,8 @@ from aws_cdk import (
     aws_secretsmanager as secretsmanager,
     aws_ses as ses,
     aws_sns as sns,
-    aws_sns_subscriptions as subscriptions
+    aws_sns_subscriptions as subscriptions,
+    #aws_lambda_python_alpha as aws_lambda_python_,
 )
 import aws_cdk as cdk
 import json
@@ -108,7 +109,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                               './lambda/code'),
                                           handler="product_lambda.productHandler",
                                           runtime=lambda_.Runtime.PYTHON_3_9)
-
         # Create an environmental variable to pass the product table name
         # product_lambda.add_environment('PRODUCT_TABLE', product_table.table_name)
         product_lambda.add_environment(
@@ -283,6 +283,12 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 #layers=[lambdaLayers,
                                                 #        powertools_layer],
                                                 runtime=lambda_.Runtime.PYTHON_3_9)
+
+        #shopping_cart_lambda = aws_lambda_python_.PythonFunction(self, "ShoppingCartLambda",
+        #                                  entry="./lambda/code",
+        #                                  handler="cartHandler",
+        #                                  index="cart_lambda.py",
+        #                                  runtime=lambda_.Runtime.PYTHON_3_9)
 
         # shopping_cart_lambda.add_environment("CART_TABLE", shopping_cart.table_name)
         shopping_cart_lambda.add_environment(

@@ -1,0 +1,6 @@
+# When using PythonFunction (alpha) feature, we can place the
+# dependencies in requirements.txt to be included during creation
+# of the Lambda function. PythonFunction requires docker 
+# to deploy successfully
+aws-lambda-powertools[all]
+requests

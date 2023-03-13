@@ -4,3 +4,4 @@ boto3>=1.26.41,<2.0.0
 aws-lambda-powertools
 requests
 cdk-nag>=2.21.68
+#aws-cdk.aws-lambda-python-alpha
