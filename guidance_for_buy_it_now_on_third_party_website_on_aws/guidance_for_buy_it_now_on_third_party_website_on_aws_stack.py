@@ -45,18 +45,18 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        lambdaLayers = lambda_.LayerVersion(self, 'requests-layer',
+        lambdaLayers = lambda_.LayerVersion(self, 'requests-powertools-layer',
                                             code=lambda_.AssetCode(
-                                                'lambda/layers/requests/'),
+                                                'lambda/layers/requests-powertools/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
         #powertools_layer = lambda_.LayerVersion(self, 'aws-lambda-powertools',
         #                                    code=lambda_.AssetCode(
         #                                        'lambda/layers/aws-lambda-powertools/'),
         #                                    compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
 
-        POWERTOOLS_ARN = f"arn:aws:lambda:{Aws.REGION}:017000801446:layer:AWSLambdaPowertoolsPythonV2:23"
-        powertools_layer = lambda_.LayerVersion\
-            .from_layer_version_arn(self, id="lambda-powertools", layer_version_arn=POWERTOOLS_ARN)
+        #POWERTOOLS_ARN = f"arn:aws:lambda:{Aws.REGION}:017000801446:layer:AWSLambdaPowertoolsPythonV2:23"
+        #powertools_layer = lambda_.LayerVersion\
+        #    .from_layer_version_arn(self, id="lambda-powertools", layer_version_arn=POWERTOOLS_ARN)
 
         #powertools_layer = lambda_.LayerVersion.from_layer_version_arn(self, id="lambda-powertools",
         #                                                               layer_version_arn=f"arn:aws:lambda:us-east-1:017000801446:layer:AWSLambdaPowertoolsPythonV2:18")
@@ -75,14 +75,17 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         self.setProduct()
         # self.setCustomer()
-        self.setShoppingCart(lambdaLayers=lambdaLayers,
-                             powertools_layer=powertools_layer)
+        self.setShoppingCart(lambdaLayers=lambdaLayers)
+        #self.setShoppingCart(lambdaLayers=lambdaLayers,
+        #                     powertools_layer=powertools_layer)
         self.setStores()
-        self.setStoreProduct(lambdaLayers=lambdaLayers,
-                             powertools_layer=powertools_layer)
+        self.setStoreProduct(lambdaLayers=lambdaLayers)
+        #self.setStoreProduct(lambdaLayers=lambdaLayers,
+        #                     powertools_layer=powertools_layer)
         # self.setStoreSelector(lambdaLayers=lambdaLayers, powertools_layer=powertools_layer)
-        self.setOrderManager(lambdaLayers=lambdaLayers,
-                             powertools_layer=powertools_layer)
+        self.setOrderManager(lambdaLayers=lambdaLayers)
+        #self.setOrderManager(lambdaLayers=lambdaLayers,
+        #                     powertools_layer=powertools_layer)
 
         CfnOutput(self, "Products Management URL", value=self.product_url, export_name="buy-it-now-products-management-url")
         # CfnOutput(self, "Customers Management URL", value=self.customer_url)
@@ -263,7 +266,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
     #    #customer.add_method("GET")
     #    ##self.customer_url = f"{customer_gateway.url}customers"
 
-    def setShoppingCart(self, lambdaLayers, powertools_layer):
+    #def setShoppingCart(self, lambdaLayers, powertools_layer):
+    def setShoppingCart(self, lambdaLayers):
         # shopping_cart = dynamodb_.Table(self, "ShoppingCart",
         #                partition_key=dynamodb_.Attribute(name="user_id_cart_id",
         #                                type=dynamodb_.AttributeType.STRING),
@@ -275,8 +279,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 code=lambda_.Code.from_asset(
                                                     "./lambda/code"),
                                                 handler="cart_lambda.cartHandler",
-                                                layers=[lambdaLayers,
-                                                        powertools_layer],
+                                                layers=[lambdaLayers],
+                                                #layers=[lambdaLayers,
+                                                #        powertools_layer],
                                                 runtime=lambda_.Runtime.PYTHON_3_9)
 
         # shopping_cart_lambda.add_environment("CART_TABLE", shopping_cart.table_name)
@@ -378,7 +383,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         # self.store_url = stores_gateway.url
 
-    def setStoreProduct(self, lambdaLayers, powertools_layer):
+    #def setStoreProduct(self, lambdaLayers, powertools_layer):
+    def setStoreProduct(self, lambdaLayers):
         store_product_table_arn = cdk.Fn.import_value("store-product-table-arn")
         store_product_table = dynamodb_.Table.from_table_arn(
             self, "StoreProductTable", table_arn=store_product_table_arn)
@@ -398,8 +404,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                  code=lambda_.Code.from_asset(
                                                      './lambda/code'),
                                                  handler="store_products_lambda.storeProductHandler",
-                                                 layers=[lambdaLayers,
-                                                         powertools_layer],
+                                                 layers=[lambdaLayers],
+                                                 #layers=[lambdaLayers,
+                                                 #        powertools_layer],
                                                  timeout=Duration.seconds(300),
                                                  runtime=lambda_.Runtime.PYTHON_3_9)
 
@@ -548,7 +555,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
     #            handler="create_order_lambda.createOrderHandler",
     #            runtime=lambda_.Runtime.PYTHON_3_9)
 
-    def setOrderManager(self, lambdaLayers, powertools_layer):
+    #def setOrderManager(self, lambdaLayers, powertools_layer):
+    def setOrderManager(self, lambdaLayers):
         # orders_table = dynamodb_.Table(self, "Orders",
         #        partition_key=dynamodb_.Attribute(name="order_id",
         #        type=dynamodb_.AttributeType.STRING),
@@ -612,8 +620,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 code=lambda_.Code.from_asset(
                                                     './lambda/code'),
                                                 handler="order_manager_lambda.orderManagerHandler",
-                                                layers=[lambdaLayers,
-                                                        powertools_layer],
+                                                layers=[lambdaLayers],
+                                                #layers=[lambdaLayers,
+                                                #        powertools_layer],
                                                 runtime=lambda_.Runtime.PYTHON_3_9)
         # order_manager_lambda.add_environment("CUSTOMER_URL", self.customer_url)
         # order_manager_lambda.add_environment('ORDERS_TABLE', orders_table.table_name)
