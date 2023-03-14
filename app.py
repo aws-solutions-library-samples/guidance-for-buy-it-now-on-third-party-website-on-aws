@@ -18,8 +18,8 @@ Aspects.of(app).add(AwsSolutionsChecks(verbose=True))
 NagSuppressions.add_stack_suppressions(
     stack=third_party_stack, 
     suppressions=[
-        {"id":"AwsSolutions-APIG1", "reason":"Sample Code"},
-        {"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-APIG1", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
         {"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         {"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
         {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
@@ -32,8 +32,8 @@ NagSuppressions.add_stack_suppressions(
 NagSuppressions.add_stack_suppressions(
     stack=buy_it_now_stack, 
     suppressions=[
-        {"id":"AwsSolutions-APIG1", "reason":"Sample Code"},
-        {"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-APIG1", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
         {"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         {"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
         {"id":"AwsSolutions-COG4", "reason":"Sample Code"},

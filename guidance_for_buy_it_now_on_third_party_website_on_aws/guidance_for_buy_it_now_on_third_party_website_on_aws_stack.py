@@ -29,6 +29,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
     order_manager_url = None
     store_product_table = None
     api = None
+    request_validator = None
     buyitnow_table = None
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -38,8 +39,19 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 'lambda/layers/requests-powertools/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
 
+        log_group = logs.LogGroup(self, "BuyitNow-ApiGatewayAccessLogs")
         self.api = apigateway_.RestApi(
-            self, "buy-it-now", cloud_watch_role=True, deploy=True)
+            self, "buy-it-now", cloud_watch_role=True, deploy=True,
+            deploy_options=apigateway_.StageOptions(
+                access_log_destination=apigateway_.LogGroupLogDestination(log_group),
+                access_log_format=apigateway_.AccessLogFormat.custom(f"{apigateway_.AccessLogField.context_request_id()} \
+                    {apigateway_.AccessLogField.context_identity_source_ip()} \
+                    {apigateway_.AccessLogField.context_http_method()} \
+                    {apigateway_.AccessLogField.context_error_message()} \
+                    {apigateway_.AccessLogField.context_error_message_string()}")
+            )
+        )
+        self.request_validator = self.api.add_request_validator("BuyitNowRequestValidator", validate_request_parameters=True, validate_request_body=True)
         self.url = self.api.url
         self.buyitnow_table = dynamodb_.Table(self, "buyitnow",
                                               partition_key=dynamodb_.Attribute(name="PK",
@@ -75,7 +87,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         api_products = self.api.root.add_resource("products")
         api_products.add_method(
-            "GET", apigateway_.LambdaIntegration(product_lambda))
+            "GET", apigateway_.LambdaIntegration(product_lambda),
+            request_validator=self.request_validator,
+        )
         # Example POST: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/products/
         # {
         #   "id":"101",
@@ -83,12 +97,16 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         #   "price": "99.99"
         # }
         api_products.add_method(
-            "POST", apigateway_.LambdaIntegration(product_lambda))
+            "POST", apigateway_.LambdaIntegration(product_lambda),
+            request_validator=self.request_validator,
+        )
         api_product = api_products.add_resource("{product}")
         # Method to get a specific product based on product id
         # Example GET: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/products/101
         api_product.add_method("GET", apigateway_.LambdaIntegration(
-            product_lambda))  # GET /products/{product}
+            product_lambda),
+            request_validator=self.request_validator,
+        )  # GET /products/{product}
         # Do no use self.api.url to get the url because it causes circular dependencies
         self.product_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/products"
 
@@ -116,7 +134,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         api_carts = self.api.root.add_resource("carts")
         api_carts.add_method(
-            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda))
+            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda),
+            request_validator=self.request_validator,
+        )
         # Example POST: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/carts/
         # {
         #   "partial_cart_id": "0001",
@@ -124,15 +144,21 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         #   "quantity":"1"
         # }
         api_carts.add_method(
-            "POST", apigateway_.LambdaIntegration(shopping_cart_lambda))
+            "POST", apigateway_.LambdaIntegration(shopping_cart_lambda),
+            request_validator=self.request_validator,
+        )
         api_cart = api_carts.add_resource("{cart_id}")
         # Method to get a specific cart based on cart id
         # Example GET: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/carts/user_id%23guest-cart_id%230001
         api_cart.add_method(
-            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda))
+            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda),
+            request_validator=self.request_validator,
+        )
         api_cart_product = api_cart.add_resource("{product_id}")
         api_cart_product.add_method(
-            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda))
+            "GET", apigateway_.LambdaIntegration(shopping_cart_lambda),
+            request_validator=self.request_validator,
+        )
         self.cart_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/carts"
 
     def setStores(self):
@@ -149,7 +175,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         api_stores = self.api.root.add_resource("stores")
         api_stores.add_method(
-            "GET", apigateway_.LambdaIntegration(stores_lambda))
+            "GET", apigateway_.LambdaIntegration(stores_lambda),
+            request_validator=self.request_validator,
+        )
         # Example POST: https://3ir7i48vu4.execute-api.us-east-1.amazonaws.com/prod/stores
         # {
         #   "id":"2001",
@@ -157,11 +185,15 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         #   "address": "1600 Pennsylvania Avenue, DC",
         # }
         api_stores.add_method(
-            "POST", apigateway_.LambdaIntegration(stores_lambda))
+            "POST", apigateway_.LambdaIntegration(stores_lambda),
+            request_validator=self.request_validator,
+        )
         api_product = api_stores.add_resource("{store}")
         # Example GET: https://3ir7i48vu4.execute-api.us-east-1.amazonaws.com/prod/stores/2001
         api_product.add_method(
-            "GET", apigateway_.LambdaIntegration(stores_lambda))
+            "GET", apigateway_.LambdaIntegration(stores_lambda),
+            request_validator=self.request_validator,
+        )
         # Do no use self.api.url to get the url because it causes circular dependencies
         self.store_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/stores"
 
@@ -192,7 +224,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         api_store_products = self.api.root.add_resource("store_products")
         api_store_products.add_method(
-            "GET", apigateway_.LambdaIntegration(store_products_lambda))
+            "GET", apigateway_.LambdaIntegration(store_products_lambda),
+            request_validator=self.request_validator,
+        )
         # Example POST: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/store_products/
         # {
         #   "store_id":"1001",
@@ -201,15 +235,21 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         #   "price": "99.99"
         # }
         api_store_products.add_method(
-            "POST", apigateway_.LambdaIntegration(store_products_lambda))
+            "POST", apigateway_.LambdaIntegration(store_products_lambda),
+            request_validator=self.request_validator,
+        )
         api_product = api_store_products.add_resource("{product_id}")
         # Example GET: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/store_products/1001
         api_product.add_method("GET", apigateway_.LambdaIntegration(
-            store_products_lambda))  # GET /store_products/{product_id}
+            store_products_lambda),
+            request_validator=self.request_validator,
+        )  # GET /store_products/{product_id}
         api_store_product = api_product.add_resource("{store_id}")
         # Example GET: https://acsgrblbqf.execute-api.us-east-1.amazonaws.com/prod/store_products/1001/101
         api_store_product.add_method("GET", apigateway_.LambdaIntegration(
-            store_products_lambda))  # GET /store_products/{product_id}/{store_id}
+            store_products_lambda),
+            request_validator=self.request_validator,
+        )  # GET /store_products/{product_id}/{store_id}
         self.store_product_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/store_products"
 
     def setOrderManager(self, lambdaLayers):
@@ -430,5 +470,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         #   "loyalty_id": "1234567890"
         # }
         api_order_manager.add_method("ANY", apigateway_.StepFunctionsIntegration.start_execution(
-            state_machine=sm, headers=True, authorizer=True))
+            state_machine=sm, headers=True, authorizer=True),
+            request_validator=self.request_validator,
+        )
         self.order_manager_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/order_manager"
