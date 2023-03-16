@@ -461,7 +461,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                 destination=log_group,
                 level=sfn.LogLevel.ALL
             ),
-            state_machine_type=sfn.StateMachineType.EXPRESS
+            state_machine_type=sfn.StateMachineType.EXPRESS,
+            tracing_enabled=True
         )
 
         sm.add_to_role_policy(
