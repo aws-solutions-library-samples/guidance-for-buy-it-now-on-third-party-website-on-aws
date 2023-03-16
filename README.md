@@ -63,9 +63,9 @@ $ pip install -r requirements.txt
 ```
 $ cdk ls
 ```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You should see 2 stacks Thirdparty-MockStack and guidance-for-buy-it-now-on-third-party-website-on-aws stack
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You should see 2 stacks `Thirdparty-MockStack` and `guidance-for-buy-it-now-on-third-party-website-on-aws` stack
 
-6. You will first need to deploy the Thirdparty-MockStack. This stack is used to mock third party resources in our guidance. This stack will spin up 1 API Gateway with 3 mock endpoints and 1 DynamoDB table.
+6. You will first need to deploy the `Thirdparty-MockStack`. This stack is used to mock third party resources in our guidance. This stack will spin up 1 API Gateway with 3 mock endpoints and 1 DynamoDB table.
    - DynamoDB: This is used to store product details like name and price from different stores
    - API Gateway:
      - Payment Gateway: This mock endpoint allows us to validate the payment details submitted by the customer
@@ -102,7 +102,7 @@ You are now ready to test the guidance.
 
 In this section, we will first populate some test data and then we will go through the steps to place an order. 
 
-All REST api calls should have a header "Authorization" with value "allow". The API Gateway uses Lambda Authorizer to authorize the request. In this guidance, we are using a simple authorizer that checks if the "Authorization" header has an "allow" value.
+All REST api calls should have a header `Authorization` with value `allow`. The API Gateway uses Lambda Authorizer to authorize the request. In this guidance, we are using a simple authorizer that checks if the `Authorization` header has an `allow` value.
 
 ### Initialization of Products, Stores and Products in Stores
 
