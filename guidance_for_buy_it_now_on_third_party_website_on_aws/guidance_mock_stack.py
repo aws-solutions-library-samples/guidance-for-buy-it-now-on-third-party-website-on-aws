@@ -183,7 +183,8 @@ class MockStack(Stack):
                                                                                 type=dynamodb_.AttributeType.STRING),
                                               sort_key=dynamodb_.Attribute(name="store_id",
                                                                            type=dynamodb_.AttributeType.STRING),
-                                              removal_policy=RemovalPolicy.DESTROY)
+                                              removal_policy=RemovalPolicy.DESTROY,
+                                              point_in_time_recovery=True)
         CfnOutput(self, "Store Product Table", export_name="store-product-table-arn",
                   value=store_product_table.table_arn
                   )

@@ -75,7 +75,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                                                 type=dynamodb_.AttributeType.STRING),
                                               sort_key=dynamodb_.Attribute(name="SK",
                                                                            type=dynamodb_.AttributeType.STRING),
-                                              removal_policy=RemovalPolicy.DESTROY)
+                                              removal_policy=RemovalPolicy.DESTROY,
+                                              point_in_time_recovery=True)
 
         self.setProduct()
         self.setShoppingCart(lambdaLayers=lambdaLayers)

@@ -26,7 +26,7 @@ NagSuppressions.add_stack_suppressions(
         {"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
         # Suppress warnings
         {"id":"AwsSolutions-APIG3", "reason":"Sample Code"},
-        {"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
     ]
 )
 NagSuppressions.add_stack_suppressions(
@@ -44,7 +44,7 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-SF2", "reason":"Sample Code"},
         # Suppress warnings
         {"id":"AwsSolutions-APIG3", "reason":"Sample Code"},
-        {"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
     ]
 )
 app.synth()
