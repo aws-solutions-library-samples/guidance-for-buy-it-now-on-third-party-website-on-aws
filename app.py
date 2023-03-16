@@ -39,7 +39,7 @@ NagSuppressions.add_stack_suppressions(
         {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
         {"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
         {"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
-        {"id":"AwsSolutions-SNS2", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-SNS2", "reason":"Sample Code"},
         {"id":"AwsSolutions-SNS3", "reason":"Sample Code"},
         {"id":"AwsSolutions-SF2", "reason":"Sample Code"},
         # Suppress warnings

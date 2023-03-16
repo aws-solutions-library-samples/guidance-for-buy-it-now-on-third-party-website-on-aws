@@ -16,6 +16,7 @@ from aws_cdk import (
     aws_sns as sns,
     aws_sns_subscriptions as subscriptions,
     Duration,
+    aws_kms as kms,
     #aws_lambda_python_alpha as aws_lambda_python_,
 )
 import aws_cdk as cdk
@@ -284,8 +285,9 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         pre_order_gateway_url = cdk.Fn.import_value("pre-order-gateway-url")
         verified_identity = self.node.try_get_context("verified_identity")
 
+        sns_key_alias = kms.Alias.from_alias_name(self, "aws_sns_key", "alias/aws/sns")
         my_topic_name = "BuyitNowOrder"
-        my_topic = sns.Topic(self, my_topic_name)
+        my_topic = sns.Topic(self, my_topic_name, master_key=sns_key_alias)
         if verified_identity:
             my_topic.add_subscription(
                 subscriptions.EmailSubscription(verified_identity))
