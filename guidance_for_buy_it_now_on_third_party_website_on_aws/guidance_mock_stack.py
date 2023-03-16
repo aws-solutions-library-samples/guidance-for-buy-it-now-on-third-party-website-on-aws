@@ -33,6 +33,8 @@ class MockStack(Stack):
                                 cloud_watch_role=True,
                                 deploy=True,
                                 deploy_options=apigateway_.StageOptions(
+                                    logging_level=apigateway_.MethodLoggingLevel.INFO,
+                                    metrics_enabled=True,
                                     access_log_destination=apigateway_.LogGroupLogDestination(log_group),
                                     access_log_format=apigateway_.AccessLogFormat.custom(f"{apigateway_.AccessLogField.context_request_id()} \
                                         {apigateway_.AccessLogField.context_identity_source_ip()} \
