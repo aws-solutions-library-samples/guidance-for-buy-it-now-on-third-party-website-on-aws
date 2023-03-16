@@ -61,7 +61,7 @@ def cartHandler(event, context):
         user_id = get_user_id(event["headers"])
         logger.info(f"User Id: {user_id}")
         try:
-            product = get_product(product_id=product_id)
+            product = get_product(product_id=product_id, headers=event["headers"])
             logger.info(f"Product: {product}")
         except NotFoundException:
             logger.error(f"get_product failed for product_id {product_id}")

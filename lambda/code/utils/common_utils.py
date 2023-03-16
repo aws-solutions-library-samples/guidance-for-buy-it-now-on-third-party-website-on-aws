@@ -30,12 +30,12 @@ class DecimalEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 @tracer.capture_method
-def get_product(product_id):
+def get_product(product_id, headers):
     get_product_url = os.environ["GET_PRODUCT_URL"]
     logger.info(f'Product Url: {get_product_url}')
     product_id_url = get_product_url+f"/{product_id}"
     logger.info(product_id_url)
-    product = requests.get(product_id_url)
+    product = requests.get(product_id_url, headers=get_auth_header(headers))
     logger.info(f"JSON: {product.json()}")
     logger.info(f"TEXT: {product.text}")
     try:
@@ -46,36 +46,23 @@ def get_product(product_id):
     return response
 
 @tracer.capture_method
-def get_cart(cart_id, cart_url):
+def get_cart(cart_id, cart_url, headers):
     logger.info(f'Cart Url: {cart_url}')
     encoded_cart_id = requests.utils.quote(cart_id)
     cart_id_url = cart_url+f"/{encoded_cart_id}"
     logger.info(f'Cart ID URL: {cart_id_url}')
-    cart = requests.get(cart_id_url)
+    cart = requests.get(cart_id_url, headers=get_auth_header(headers))
     response = cart.json()
     logger.info(f"Cart Data: {response}")
     return response
 
 @tracer.capture_method
-def get_stores(stores_url):
+def get_stores(stores_url, headers):
     logger.info(f'Stores Url: {stores_url}')
     logger.info(f'All Stores URL: {stores_url}')
-    stores = requests.get(stores_url)
+    stores = requests.get(stores_url, headers=get_auth_header(headers))
     response = stores.json()
     logger.info(f"Stores Data: {response}")
-    return response
-
-@tracer.capture_method
-def add_customer(customer_url, customer, headers):
-    logger.info(f"Customer URL: {customer_url}, Customer: {customer}")
-    response = None
-    if isGuest(headers):
-        logger.info(f"User is 'guest'")
-        response = requests.post(customer_url, json=customer)
-    else:
-        customer_id = get_user_id(headers)
-        logger.info(f"User is '{customer_id}'")
-        response = {"customer_id": customer_id}
     return response
 
 # This method is used as a placeholder to get a valid user id
@@ -87,10 +74,6 @@ def add_customer(customer_url, customer, headers):
 @tracer.capture_method
 def get_user_id(headers):
     user_id = "guest"
-    try:
-        user_id = headers["Authorization"].value
-    except:
-        logger.info("Authorization not present. User 'guest' user")
     logger.info("Authorization: "+user_id)
     return user_id
 
@@ -137,10 +120,11 @@ def create_3p_order(secretsmanager_client, payment, shipping, headers, create_or
     if (valid_header):
         logger.info(f"header valid")
         response = requests.post(
-            create_order_url, json=json_body, headers=valid_header)
+            create_order_url, json=json_body, headers=add_auth_header(valid_header, headers))
+            #create_order_url, json=json_body, headers=valid_header)
     else:
         logger.info(f"header invalid")
-        response = requests.post(create_order_url, json=json_body)
+        response = requests.post(create_order_url, json=json_body, headers=get_auth_header(headers))
 
     response_json = response.json()
     logger.info(f"order response: {response_json}")
@@ -155,7 +139,7 @@ def pre_order(cart_id, headers, pre_order_url):
     logger.info(f"pre_order body: {json_body}")
     logger.info(f"HEADERS {headers}")
     response = None
-    response = requests.post(pre_order_url, json=json_body)
+    response = requests.post(pre_order_url, json=json_body, headers=get_auth_header(headers))
 
     response_json = response.json()
     logger.info(f"pre_order payment response: {response_json}")
@@ -188,10 +172,11 @@ def validate_payment(secretsmanager_client, payment, headers, payment_processor_
     if (valid_header):
         logger.info(f"header valid")
         response = requests.post(payment_processor_url,
-                               json=json_body, headers=valid_header)
+                               json=json_body, headers=add_auth_header(valid_header, headers))
+                               #json=json_body, headers=valid_header)
     else:
         logger.info(f"header invalid")
-        response = requests.post(payment_processor_url, json=json_body)
+        response = requests.post(payment_processor_url, json=json_body, headers=get_auth_header(headers))
 
     response_json = response.json()
     logger.info(f"payment response: {response_json}")
@@ -326,3 +311,25 @@ def send_templated_email(sender, receiver, template_name, template_data):
         logger.info(f"Response: {response}")
         return response
     return None
+
+@ tracer.capture_method
+def get_authorization(headers):
+    authorization = "deny"
+    try:
+        authorization = headers["Authorization"]
+    except KeyError:
+        logger.info(f"Header Authorization is not found")
+    return authorization
+
+@ tracer.capture_method
+def get_auth_header(headers):
+    auth_header = {
+        "Authorization": get_authorization(headers)
+    }
+    return auth_header
+
+@ tracer.capture_method
+def add_auth_header(custom_headers, all_headers):
+    custom_headers["Authorization"] = get_authorization(all_headers)
+    logger.info(f"Merged Headers: {custom_headers}")
+    return custom_headers

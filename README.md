@@ -100,7 +100,9 @@ You are now ready to test the guidance.
 
 ## Validation
 
-In this section, we will first populate some test data and then we will go through the steps to place an order
+In this section, we will first populate some test data and then we will go through the steps to place an order. 
+
+All REST api calls should have a header "Authorization" with value "allow". The API Gateway uses Lambda Authorizer to authorize the request. In this guidance, we are using a simple authorizer that checks if the "Authorization" header has an "allow" value.
 
 ### Initialization of Products, Stores and Products in Stores
 
@@ -109,6 +111,7 @@ In this section, we will first populate some test data and then we will go throu
 
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "id":"101",
@@ -118,6 +121,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "id":"102",
@@ -133,6 +137,7 @@ EOF
 
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "id":"2001",
@@ -142,6 +147,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/stores/ \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "id":"2002",
@@ -158,6 +164,7 @@ EOF
 
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "store_id":"2001",
@@ -168,6 +175,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products 
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "store_id":"2002",
@@ -178,6 +186,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products 
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "store_id":"2001",
@@ -188,6 +197,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products 
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products \
+-H "Authorization:allow" \
 --json  @- << EOF
 {
     "store_id":"2002",
@@ -206,11 +216,13 @@ We are now ready to proceed with viewing the products, adding the products to be
 
 1. The customer navigating to the CPG brand site will see all the products available using the command below. The output should show the 2 sample products we added.
 ```
-curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ | jq .
+curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/products/ \
+-H "Authorization:allow" | jq .
 ```
 2. When the customer is ready to buy the products from the site, the below commands will be executed. We are adding 2 products to the customers cart
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/ \
+-H "Authorization:allow" \
 --json @- << EOF
 {
     "partial_cart_id": "0001",
@@ -220,6 +232,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/ \
 EOF
 
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/ \
+-H "Authorization:allow" \
 --json @- << EOF
 {
     "partial_cart_id": "0001",
@@ -236,6 +249,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/carts/user_id%2
 3. When the customer is ready to view the total cost of items to be purchased from the 2 stores, the below command is run. In this command, we are able to pass a loyalty id for a store to get special deals if applicable. This allows the customer to choose the store where they want to place the order.
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/store_products/ \
+-H "Authorization:allow" \
 --json @- << EOF | jq .
 {
     "cart_id":"user_id#guest-cart_id#0001",
@@ -247,6 +261,7 @@ EOF
 4. When the customer places the order, the below command should be run. In the below command, you will notice 2 headers "is_valid" and "place_order". The reason for these headers is to simulate failures in the step function that is used to place the order. You should receive an email with the status of the order.
 ```
 curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/order_manager/ \
+-H "Authorization:allow" \
 -H "is_valid:true" \
 -H "place_order:true" \
 --json @- << EOF | jq .

@@ -6,6 +6,8 @@ from aws_cdk import (
     aws_dynamodb as dynamodb_,
     aws_logs as logs,
     aws_apigateway as apigateway_,
+    aws_lambda as lambda_,
+    Duration,
 )
 # This stack is used to mock third party services used in this guidance.
 # The following resources are created:
@@ -18,6 +20,15 @@ class MockStack(Stack):
         super().__init__(scope, "Thirdparty-MockStack")
 
         log_group = logs.LogGroup(self, "BuyitNow-Mock-ApiGatewayAccessLogs")
+        # Lambda auth function
+        auth_function = lambda_.Function(self, "ThirdpartyAuthTokenLambda",
+                                          code=lambda_.Code.from_asset(
+                                              './lambda/code/utils'),
+                                          handler="api_gateway_authorizer.handler",
+                                          runtime=lambda_.Runtime.NODEJS_18_X)
+        lambda_authorizer = apigateway_.TokenAuthorizer(self, "ThirdpartyAuthorizer", 
+                                                        handler=auth_function, 
+                                                        results_cache_ttl=Duration.seconds(0))
         rest_api = RestApi(self, "ThirdParty-MockStack-RestApi",
                                 cloud_watch_role=True,
                                 deploy=True,
@@ -28,7 +39,8 @@ class MockStack(Stack):
                                         {apigateway_.AccessLogField.context_http_method()} \
                                         {apigateway_.AccessLogField.context_error_message()} \
                                         {apigateway_.AccessLogField.context_error_message_string()}")
-                                )
+                                ),
+                                default_method_options={"authorizer": lambda_authorizer, "authorization_type": apigateway_.AuthorizationType.CUSTOM},
                             )
         req_validator = rest_api.add_request_validator("MockRequestValidator", validate_request_parameters=True, validate_request_body=True)
         validate_payment_model = apigateway_.Model(self, id="ValidatePaymentModel",

@@ -72,11 +72,11 @@ def storeProductHandler(event, context):
         #
         elif cart_id != None:
             try:
-                cart_contents = get_cart(cart_id=cart_id, cart_url=CART_URL)
+                cart_contents = get_cart(cart_id=cart_id, cart_url=CART_URL, headers=event['headers'])
                 if cart_contents != None or len(cart_contents) == 0:
                     logger.info(f"Cart Id: {cart_id} does not exist")
                 logger.info(f"Cart contains cart_contents: {cart_contents}")
-                stores = get_stores(stores_url=STORES_URL)
+                stores = get_stores(stores_url=STORES_URL, headers=event['headers'])
                 logger.info(f"Stores: {stores}")
                 store_obj = []
                 json_obj = []
