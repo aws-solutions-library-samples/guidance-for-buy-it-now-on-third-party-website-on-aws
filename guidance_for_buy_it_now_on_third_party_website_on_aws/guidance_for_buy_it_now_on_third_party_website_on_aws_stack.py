@@ -17,6 +17,7 @@ from aws_cdk import (
     aws_sns_subscriptions as subscriptions,
     Duration,
     aws_kms as kms,
+    aws_iam as iam,
     #aws_lambda_python_alpha as aws_lambda_python_,
 )
 import aws_cdk as cdk
@@ -288,6 +289,19 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         sns_key_alias = kms.Alias.from_alias_name(self, "aws_sns_key", "alias/aws/sns")
         my_topic_name = "BuyitNowOrder"
         my_topic = sns.Topic(self, my_topic_name, master_key=sns_key_alias)
+        topic_policy = sns.TopicPolicy(self, "TopicPolicy",
+            topics=[my_topic]
+        )
+        topic_policy.document.add_statements(
+            iam.PolicyStatement(
+                sid="AllowPublishThroughSSLOnly",
+                actions=["sns:Publish"],
+                effect=iam.Effect.DENY,
+                principals=[iam.AnyPrincipal()],
+                resources=[my_topic.topic_arn],
+                conditions={"Bool":{"aws:SecureTransport": "false"}}
+            )
+        )
         if verified_identity:
             my_topic.add_subscription(
                 subscriptions.EmailSubscription(verified_identity))
