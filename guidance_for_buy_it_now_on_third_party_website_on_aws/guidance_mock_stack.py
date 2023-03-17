@@ -8,6 +8,8 @@ from aws_cdk import (
     aws_apigateway as apigateway_,
     aws_lambda as lambda_,
     Duration,
+    aws_iam as iam,
+    Aws,
 )
 # This stack is used to mock third party services used in this guidance.
 # The following resources are created:
@@ -20,17 +22,31 @@ class MockStack(Stack):
         super().__init__(scope, "Thirdparty-MockStack")
 
         log_group = logs.LogGroup(self, "BuyitNow-Mock-ApiGatewayAccessLogs")
+        lambda_role = iam.Role(self, "ThirdPartyCustomAuthLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Authentication Lambda role for ThirdParty stack"
+        )
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         # Lambda auth function
         auth_function = lambda_.Function(self, "ThirdpartyAuthTokenLambda",
                                           code=lambda_.Code.from_asset(
                                               './lambda/code/utils'),
                                           handler="api_gateway_authorizer.handler",
-                                          runtime=lambda_.Runtime.NODEJS_18_X)
+                                          runtime=lambda_.Runtime.NODEJS_18_X,
+                                          role=lambda_role)
         lambda_authorizer = apigateway_.TokenAuthorizer(self, "ThirdpartyAuthorizer", 
                                                         handler=auth_function, 
                                                         results_cache_ttl=Duration.seconds(0))
         rest_api = RestApi(self, "ThirdParty-MockStack-RestApi",
-                                cloud_watch_role=True,
+                                cloud_watch_role=False,
                                 deploy=True,
                                 deploy_options=apigateway_.StageOptions(
                                     logging_level=apigateway_.MethodLoggingLevel.INFO,

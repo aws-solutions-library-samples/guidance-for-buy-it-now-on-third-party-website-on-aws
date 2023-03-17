@@ -23,7 +23,8 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
         {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
-        {"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
+        {"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
         # Suppress warnings
         {"id":"AwsSolutions-APIG3", "reason":"Sample Code"},
         #{"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
@@ -37,7 +38,7 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
         {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
-        {"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
         {"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
         #{"id":"AwsSolutions-SNS2", "reason":"Sample Code"},
         #{"id":"AwsSolutions-SNS3", "reason":"Sample Code"},

@@ -41,13 +41,27 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                             code=lambda_.AssetCode(
                                                 'lambda/layers/requests-powertools/'),
                                             compatible_runtimes=[lambda_.Runtime.PYTHON_3_9])
+        auth_lambda_role = iam.Role(self, "BuyitNowCustomAuthLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Authentication Lambda role for Buy-it-Now stack"
+        )
+        auth_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
 
         # Lambda auth function
         auth_function = lambda_.Function(self, "BuyitNowAuthTokenLambda",
                                           code=lambda_.Code.from_asset(
                                               './lambda/code/utils'),
                                           handler="api_gateway_authorizer.handler",
-                                          runtime=lambda_.Runtime.NODEJS_18_X)
+                                          runtime=lambda_.Runtime.NODEJS_18_X,
+                                          role=auth_lambda_role)
         lambda_authorizer = apigateway_.TokenAuthorizer(self, 
                                                         "BuyitNowAuthorizer", 
                                                         handler=auth_function, 
@@ -55,7 +69,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
 
         log_group = logs.LogGroup(self, "BuyitNow-ApiGatewayAccessLogs")
         self.api = apigateway_.RestApi(
-            self, "buy-it-now", cloud_watch_role=True, deploy=True,
+            self, "buy-it-now", cloud_watch_role=False, deploy=True,
             deploy_options=apigateway_.StageOptions(
                 logging_level=apigateway_.MethodLoggingLevel.INFO,
                 metrics_enabled=True,
@@ -92,12 +106,26 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         CfnOutput(self, "Order Management URL", value=self.order_manager_url, export_name="buy-it-now-order-management-url")
 
     def setProduct(self):
+        product_lambda_role = iam.Role(self, "BuyitNowCustomProductLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Product Lambda role for Buy-it-Now stack"
+        )
+        product_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         # Create Lambda Function to add/list/get products
         product_lambda = lambda_.Function(self, "ProductLambda",
                                           code=lambda_.Code.from_asset(
                                               './lambda/code'),
                                           handler="product_lambda.productHandler",
-                                          runtime=lambda_.Runtime.PYTHON_3_9)
+                                          runtime=lambda_.Runtime.PYTHON_3_9,
+                                          role=product_lambda_role)
         # Create an environmental variable to pass the table name
         product_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
@@ -129,12 +157,26 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         self.product_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/products"
 
     def setShoppingCart(self, lambdaLayers):
+        cart_lambda_role = iam.Role(self, "BuyitNowCustomCartLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Cart Lambda role for Buy-it-Now stack"
+        )
+        cart_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         shopping_cart_lambda = lambda_.Function(self, "ShoppingCartLambda",
                                                 code=lambda_.Code.from_asset(
                                                     "./lambda/code"),
                                                 handler="cart_lambda.cartHandler",
                                                 layers=[lambdaLayers],
-                                                runtime=lambda_.Runtime.PYTHON_3_9)
+                                                runtime=lambda_.Runtime.PYTHON_3_9,
+                                                role=cart_lambda_role)
         # Use PythonFunction if you dont want to manage lambda layers
         # - You will need Docker to use PythonFunction.
         # - PythonFunction is experimental (03/2023)
@@ -180,12 +222,26 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         self.cart_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/carts"
 
     def setStores(self):
+        stores_lambda_role = iam.Role(self, "BuyitNowCustomStoresLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Stores Lambda role for Buy-it-Now stack"
+        )
+        stores_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         # Create Lambda Function to add/list/get customers
         stores_lambda = lambda_.Function(self, "StoresLambda",
                                          code=lambda_.Code.from_asset(
                                              './lambda/code'),
                                          handler="stores_lambda.storesHandler",
-                                         runtime=lambda_.Runtime.PYTHON_3_9)
+                                         runtime=lambda_.Runtime.PYTHON_3_9,
+                                         role=stores_lambda_role)
 
         stores_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
@@ -221,6 +277,19 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         store_product_table = dynamodb_.Table.from_table_arn(
             self, "StoreProductTable", table_arn=store_product_table_arn)
 
+        store_product_lambda_role = iam.Role(self, "BuyitNowCustomStoreProductLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Store Products Lambda role for Buy-it-Now stack"
+        )
+        store_product_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         # Create Lambda Function to add/list/get products
         store_products_lambda = lambda_.Function(self, "StoreProductLambda",
                                                  code=lambda_.Code.from_asset(
@@ -228,7 +297,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                  handler="store_products_lambda.storeProductHandler",
                                                  layers=[lambdaLayers],
                                                  timeout=Duration.seconds(300),
-                                                 runtime=lambda_.Runtime.PYTHON_3_9)
+                                                 runtime=lambda_.Runtime.PYTHON_3_9,
+                                                 role=store_product_lambda_role)
 
         # Create an environmental variable to pass the product table name
         store_products_lambda.add_environment(
@@ -271,12 +341,26 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         self.store_product_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/store_products"
 
     def setOrderManager(self, lambdaLayers):
+        order_lambda_role = iam.Role(self, "BuyitNowCustomOrderLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            description="Custom Order Lambda role for Buy-it-Now stack"
+        )
+        order_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
         order_manager_lambda = lambda_.Function(self, "OrderManagerLambda",
                                                 code=lambda_.Code.from_asset(
                                                     './lambda/code'),
                                                 handler="order_manager_lambda.orderManagerHandler",
                                                 layers=[lambdaLayers],
-                                                runtime=lambda_.Runtime.PYTHON_3_9)
+                                                runtime=lambda_.Runtime.PYTHON_3_9,
+                                                role=order_lambda_role)
         order_manager_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
         self.buyitnow_table.grant_read_write_data(order_manager_lambda)
@@ -310,7 +394,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             iam.PolicyStatement(
                 actions=['sns:Publish', 'sns:ListTopics'],
                 effect=iam.Effect.ALLOW,
-                resources=['*']
+                resources=[my_topic.topic_arn]
             )
         )
 
@@ -323,14 +407,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         if (pre_order_gateway_url):
             order_manager_lambda.add_environment(
                 'PRE_ORDER_GATEWAY', pre_order_gateway_url)
-        #order_manager_lambda.add_to_role_policy(
-        #    iam.PolicyStatement(
-        #        actions=['ses:SendEmail', 'SES:SendRawEmail',
-        #                 'ses:SendTemplatedEmail'],
-        #        effect=iam.Effect.ALLOW,
-        #        resources=['*']
-        #    )
-        #)
         order_manager_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 actions=['secretsmanager:GetRandomPassword',
@@ -341,7 +417,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                          'secretsmanager:PutSecretValue',
                          'secretsmanager:UpdateSecret'],
                 effect=iam.Effect.ALLOW,
-                resources=['*']
+                resources=[f"arn:aws:secretsmanager:{Aws.REGION}:{Aws.ACCOUNT_ID}:secret:*"],
             )
         )
 
@@ -453,6 +529,25 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                   )
 
         log_group = logs.LogGroup(self, "OrderManagerStepFunctionLogGroup")
+        sm_role = iam.Role(self, "BuyitNowCustomStateMachineRole",
+            assumed_by=iam.ServicePrincipal("states.amazonaws.com"),
+            description="Custom State Machine role for Buy-it-Now stack",
+        )
+        sm_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["logs:CreateLogDelivery",
+                    "logs:GetLogDelivery",
+                    "logs:UpdateLogDelivery",
+                    "logs:DeleteLogDelivery",
+                    "logs:ListLogDeliveries",
+                    "logs:PutLogEvents",
+                    "logs:PutResourcePolicy",
+                    "logs:DescribeResourcePolicies",
+                    "logs:DescribeLogGroups"],
+                effect=iam.Effect.ALLOW,
+                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
+            )
+        )
 
         sm = sfn.StateMachine(
             self, "OrderManager",
@@ -463,23 +558,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                 level=sfn.LogLevel.ALL
             ),
             state_machine_type=sfn.StateMachineType.EXPRESS,
-            tracing_enabled=True
-        )
-
-        sm.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogDelivery",
-                         "logs:GetLogDelivery",
-                         "logs:UpdateLogDelivery",
-                         "logs:DeleteLogDelivery",
-                         "logs:ListLogDeliveries",
-                         "logs:PutLogEvents",
-                         "logs:PutResourcePolicy",
-                         "logs:DescribeResourcePolicies",
-                         "logs:DescribeLogGroups"],
-                effect=iam.Effect.ALLOW,
-                resources=['*']
-            )
+            tracing_enabled=True,
+            role=sm_role
         )
 
         api_order_manager = self.api.root.add_resource("order_manager")
