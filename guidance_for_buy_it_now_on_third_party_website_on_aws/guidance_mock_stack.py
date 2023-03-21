@@ -10,6 +10,10 @@ from aws_cdk import (
     Duration,
     aws_iam as iam,
     Aws,
+    ArnFormat,
+)
+from cdk_nag import (
+    NagSuppressions
 )
 # This stack is used to mock third party services used in this guidance.
 # The following resources are created:
@@ -26,15 +30,6 @@ class MockStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Authentication Lambda role for ThirdParty stack"
         )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         # Lambda auth function
         auth_function = lambda_.Function(self, "ThirdpartyAuthTokenLambda",
                                           code=lambda_.Code.from_asset(
@@ -42,6 +37,40 @@ class MockStack(Stack):
                                           handler="api_gateway_authorizer.handler",
                                           runtime=lambda_.Runtime.NODEJS_18_X,
                                           role=lambda_role)
+        lambda_auth_policy = iam.Policy(self, 'ThirdPartyLambdaAuthPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    Stack.of(self).format_arn(
+                        service="logs",
+                        arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                        resource="log-group", 
+                        resource_name="/aws/lambda/"+auth_function.function_name
+                    ),
+                    Stack.of(self).format_arn(
+                        service="logs",
+                        arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                        resource="log-group", 
+                        resource_name="/aws/lambda/"+auth_function.function_name+":*"
+                    ),
+                ]
+            )]
+        )
+        lambda_auth_policy.attach_to_role(auth_function.role)
+        NagSuppressions.add_resource_suppressions(lambda_auth_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": f"Only suppresses AwsSolutions-IAM5 /aws/lambda/{auth_function.function_name}:* \
+                            This is needed to allow the role to create log streams inside the log group",
+                "applies_to": [{
+                    "regex":f"/^Resource::arn:<[A-Za-z:]+>:logs:<[A-Za-z:]+>:<[A-Za-z:]+>:log-group:/aws/lambda/{auth_function.function_name}:\*$/g"
+                }],
+            }
+        ])
+
         lambda_authorizer = apigateway_.TokenAuthorizer(self, "ThirdpartyAuthorizer", 
                                                         handler=auth_function, 
                                                         results_cache_ttl=Duration.seconds(0))

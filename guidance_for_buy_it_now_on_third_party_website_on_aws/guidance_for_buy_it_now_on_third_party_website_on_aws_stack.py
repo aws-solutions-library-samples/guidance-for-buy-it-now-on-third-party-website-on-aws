@@ -18,7 +18,11 @@ from aws_cdk import (
     Duration,
     aws_kms as kms,
     aws_iam as iam,
+    ArnFormat,
     #aws_lambda_python_alpha as aws_lambda_python_,
+)
+from cdk_nag import (
+    NagSuppressions
 )
 import aws_cdk as cdk
 import json
@@ -45,15 +49,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Authentication Lambda role for Buy-it-Now stack"
         )
-        auth_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
 
         # Lambda auth function
         auth_function = lambda_.Function(self, "BuyitNowAuthTokenLambda",
@@ -62,6 +57,18 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                           handler="api_gateway_authorizer.handler",
                                           runtime=lambda_.Runtime.NODEJS_18_X,
                                           role=auth_lambda_role)
+        auth_function_policy = iam.Policy(self, 'BuyitNowCustomAuthLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(auth_function.function_name)
+            )]
+        )
+        auth_function_policy.attach_to_role(auth_function.role)
+        self.cdknag_suppress_lambda_iam5(auth_function_policy, auth_function.function_name)
+
         lambda_authorizer = apigateway_.TokenAuthorizer(self, 
                                                         "BuyitNowAuthorizer", 
                                                         handler=auth_function, 
@@ -110,15 +117,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Product Lambda role for Buy-it-Now stack"
         )
-        product_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         # Create Lambda Function to add/list/get products
         product_lambda = lambda_.Function(self, "ProductLambda",
                                           code=lambda_.Code.from_asset(
@@ -126,6 +124,17 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                           handler="product_lambda.productHandler",
                                           runtime=lambda_.Runtime.PYTHON_3_9,
                                           role=product_lambda_role)
+        product_lambda_policy = iam.Policy(self, 'BuyitNowCustomProductLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(product_lambda.function_name)
+            )]
+        )
+        product_lambda_policy.attach_to_role(product_lambda.role)
+        self.cdknag_suppress_lambda_iam5(product_lambda_policy, product_lambda.function_name)
         # Create an environmental variable to pass the table name
         product_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
@@ -161,15 +170,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Cart Lambda role for Buy-it-Now stack"
         )
-        cart_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         shopping_cart_lambda = lambda_.Function(self, "ShoppingCartLambda",
                                                 code=lambda_.Code.from_asset(
                                                     "./lambda/code"),
@@ -177,6 +177,17 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 layers=[lambdaLayers],
                                                 runtime=lambda_.Runtime.PYTHON_3_9,
                                                 role=cart_lambda_role)
+        cart_lambda_policy = iam.Policy(self, 'BuyitNowCustomCartLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(shopping_cart_lambda.function_name)
+            )]
+        )
+        cart_lambda_policy.attach_to_role(shopping_cart_lambda.role)
+        self.cdknag_suppress_lambda_iam5(cart_lambda_policy, shopping_cart_lambda.function_name)
         # Use PythonFunction if you dont want to manage lambda layers
         # - You will need Docker to use PythonFunction.
         # - PythonFunction is experimental (03/2023)
@@ -226,15 +237,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Stores Lambda role for Buy-it-Now stack"
         )
-        stores_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         # Create Lambda Function to add/list/get customers
         stores_lambda = lambda_.Function(self, "StoresLambda",
                                          code=lambda_.Code.from_asset(
@@ -242,6 +244,17 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                          handler="stores_lambda.storesHandler",
                                          runtime=lambda_.Runtime.PYTHON_3_9,
                                          role=stores_lambda_role)
+        stores_lambda_policy = iam.Policy(self, 'BuyitNowCustomStoresLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(stores_lambda.function_name)
+            )]
+        )
+        stores_lambda_policy.attach_to_role(stores_lambda.role)
+        self.cdknag_suppress_lambda_iam5(stores_lambda_policy, stores_lambda.function_name)
 
         stores_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
@@ -281,15 +294,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Store Products Lambda role for Buy-it-Now stack"
         )
-        store_product_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         # Create Lambda Function to add/list/get products
         store_products_lambda = lambda_.Function(self, "StoreProductLambda",
                                                  code=lambda_.Code.from_asset(
@@ -299,6 +303,17 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                  timeout=Duration.seconds(300),
                                                  runtime=lambda_.Runtime.PYTHON_3_9,
                                                  role=store_product_lambda_role)
+        store_product_lambda_policy = iam.Policy(self, 'BuyitNowCustomStoreProductLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(store_products_lambda.function_name)
+            )]
+        )
+        store_product_lambda_policy.attach_to_role(store_products_lambda.role)
+        self.cdknag_suppress_lambda_iam5(store_product_lambda_policy, store_products_lambda.function_name)
 
         # Create an environmental variable to pass the product table name
         store_products_lambda.add_environment(
@@ -345,15 +360,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             description="Custom Order Lambda role for Buy-it-Now stack"
         )
-        order_lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
         order_manager_lambda = lambda_.Function(self, "OrderManagerLambda",
                                                 code=lambda_.Code.from_asset(
                                                     './lambda/code'),
@@ -361,6 +367,18 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                                                 layers=[lambdaLayers],
                                                 runtime=lambda_.Runtime.PYTHON_3_9,
                                                 role=order_lambda_role)
+        order_lambda_policy = iam.Policy(self, 'BuyitNowCustomOrderLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"],
+                effect=iam.Effect.ALLOW,
+                resources=self.generate_loggroup_policy_statements(order_manager_lambda.function_name)
+            )]
+        )
+        order_lambda_policy.attach_to_role(order_manager_lambda.role)
+        self.cdknag_suppress_lambda_iam5(order_lambda_policy, order_manager_lambda.function_name)
+
         order_manager_lambda.add_environment(
             'BUYITNOW_TABLE', self.buyitnow_table.table_name)
         self.buyitnow_table.grant_read_write_data(order_manager_lambda)
@@ -407,7 +425,7 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
         if (pre_order_gateway_url):
             order_manager_lambda.add_environment(
                 'PRE_ORDER_GATEWAY', pre_order_gateway_url)
-        order_manager_lambda.add_to_role_policy(
+        secrets_policy = iam.Policy(self, 'BuyitNowCustomSecretsPolicy', statements=[
             iam.PolicyStatement(
                 actions=['secretsmanager:GetRandomPassword',
                          'secretsmanager:GetSecretValue',
@@ -415,11 +433,24 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                          'secretsmanager:DescribeSecret',
                          'secretsmanager:GetSecretValue',
                          'secretsmanager:PutSecretValue',
-                         'secretsmanager:UpdateSecret'],
+                         'secretsmanager:UpdateSecret'
+                        ],
                 effect=iam.Effect.ALLOW,
                 resources=[f"arn:aws:secretsmanager:{Aws.REGION}:{Aws.ACCOUNT_ID}:secret:*"],
-            )
+            )]
         )
+        secrets_policy.attach_to_role(order_manager_lambda.role)
+        NagSuppressions.add_resource_suppressions(secrets_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": f"Only suppresses AwsSolutions-IAM5 arn:aws:secretsmanager:{Aws.REGION}:{Aws.ACCOUNT_ID}:secret:* \
+                            finding on order manager lambda function. The reason for doing this is because we want to allow \
+                            the users to create and manage their own secrets in the demo",
+                "applies_to": [{
+                    "regex":"/^Resource::arn:aws:secretsmanager:<[a-zA-Z\d'-:]+>:<[a-zA-Z\d'-:]+>:secret:\*$/g"
+                }],
+            }
+        ])
 
         capture_order_start = tasks.LambdaInvoke(self, "Capture Order Details",
                                                  lambda_function=order_manager_lambda,
@@ -533,21 +564,6 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             assumed_by=iam.ServicePrincipal("states.amazonaws.com"),
             description="Custom State Machine role for Buy-it-Now stack",
         )
-        sm_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["logs:CreateLogDelivery",
-                    "logs:GetLogDelivery",
-                    "logs:UpdateLogDelivery",
-                    "logs:DeleteLogDelivery",
-                    "logs:ListLogDeliveries",
-                    "logs:PutLogEvents",
-                    "logs:PutResourcePolicy",
-                    "logs:DescribeResourcePolicies",
-                    "logs:DescribeLogGroups"],
-                effect=iam.Effect.ALLOW,
-                resources=[f"arn:aws:logs:{Aws.REGION}:{Aws.ACCOUNT_ID}:log-group:/aws/lambda/*"]
-            )
-        )
 
         sm = sfn.StateMachine(
             self, "OrderManager",
@@ -559,9 +575,70 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             ),
             state_machine_type=sfn.StateMachineType.EXPRESS,
             tracing_enabled=True,
-            role=sm_role
+            #role=sm_role,
+            role=sm_role.without_policy_updates()
         )
-
+        secrets_policy.attach_to_role(sm.role)
+        state_machine_log_policy = iam.Policy(self, 'BuyitNowCustomStateMachineLogPolicy', statements=[
+            iam.PolicyStatement(
+                actions=[
+                    "logs:CreateLogDelivery",
+                    "logs:DeleteLogDelivery",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeResourcePolicies",
+                    "logs:GetLogDelivery",
+                    "logs:ListLogDeliveries",
+                    "logs:PutResourcePolicy",
+                    "logs:UpdateLogDelivery",
+                ],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    log_group.log_group_arn,
+                ]
+            )]
+        )
+        state_machine_log_policy.attach_to_role(sm.role)
+        xray_policy = iam.Policy(self, 'BuyitNowCustomStateMachineXrayPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["xray:GetSamplingRules",
+                    "xray:GetSamplingTargets",
+                    "xray:PutTelemetryRecords",
+                    "xray:PutTraceSegments"],
+                effect=iam.Effect.ALLOW,
+                resources=["*"],
+                conditions={"StringEquals":{"aws:SourceAccount": Aws.ACCOUNT_ID}}
+            )]
+        )
+        xray_policy.attach_to_role(sm.role)
+        NagSuppressions.add_resource_suppressions(xray_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": "Only suppresses AwsSolutions-IAM5 'Resource::*' finding on xray.\
+                            As per https://docs.aws.amazon.com/xray/latest/devguide/security_iam_service-with-iam.html, \
+                            we have to use Resource::* for xray actions that dont support resource level permissions.\
+                            The xray actions in the suppressed policy do not support resource level permissions.",
+                "appliesTo": ['Resource::*'],
+            }
+        ])
+        sm_lambda_policy = iam.Policy(self, 'BuyitNowCustomStateMachineLambdaPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["lambda:InvokeFunction"],
+                effect=iam.Effect.ALLOW,
+                resources=[
+                    order_manager_lambda.function_arn,
+                    order_manager_lambda.function_arn+":*"
+                ]
+            )]
+        )
+        sm_lambda_policy.attach_to_role(sm.role)
+        self.cdknag_suppress_iam5(sm_lambda_policy, order_manager_lambda.function_arn+":\*")
+        iam.Policy(self, 'BuyitNowCustomStateMachineSNSPolicy', statements=[
+            iam.PolicyStatement(
+                actions=["sns:Publish"],
+                effect=iam.Effect.ALLOW,
+                resources=[my_topic.topic_arn]
+            )]
+        ).attach_to_role(sm.role)
         api_order_manager = self.api.root.add_resource("order_manager")
         # Example POST: https://3ir7i48vu4.execute-api.us-east-1.amazonaws.com/prod/order_manager
         # {
@@ -587,3 +664,42 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
             request_validator=self.request_validator,
         )
         self.order_manager_url = f"https://{self.api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/order_manager"
+    
+    def generate_loggroup_policy_statements(self, lambda_function_name):
+        lambda_loggroup_policy_statement = [
+            Stack.of(self).format_arn(
+                service="logs",
+                arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                resource="log-group", 
+                resource_name="/aws/lambda/"+lambda_function_name
+            ),
+            Stack.of(self).format_arn(
+                service="logs",
+                arn_format=ArnFormat.COLON_RESOURCE_NAME,
+                resource="log-group", 
+                resource_name="/aws/lambda/"+lambda_function_name+":*"
+            ),
+        ]
+        return lambda_loggroup_policy_statement
+    
+    def cdknag_suppress_lambda_iam5(self, suppress_policy, lambda_function_name):
+        NagSuppressions.add_resource_suppressions(suppress_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": f"Only suppresses AwsSolutions-IAM5 /aws/lambda/{lambda_function_name}:* \
+                            This is needed to allow the role to create log streams inside the log group",
+                "applies_to": [{
+                    "regex":f"/^Resource::arn:<[A-Za-z:]+>:logs:<[A-Za-z:]+>:<[A-Za-z:]+>:log-group:/aws/lambda/{lambda_function_name}:\*$/g"
+                }],
+            }
+        ])
+    def cdknag_suppress_iam5(self, suppress_policy, regex):
+        NagSuppressions.add_resource_suppressions(suppress_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": f"Only suppresses AwsSolutions-IAM5 {regex}",
+                "applies_to": [{
+                    "regex":f"/^Resource::{regex}$/g"
+                }],
+            }
+        ])

@@ -22,11 +22,12 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
-        {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
+        {"id":"AwsSolutions-COG4", "reason":"Using Lambda Authorizer and not Cognito user pool authorizer"},
         #{"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
-        {"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
+
         # Suppress warnings
-        {"id":"AwsSolutions-APIG3", "reason":"Sample Code"},
+        {"id":"AwsSolutions-APIG3", "reason":"Not using WAF in this guidance but recommended for real-world use"},
         #{"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
     ]
 )
@@ -37,14 +38,15 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
-        {"id":"AwsSolutions-COG4", "reason":"Sample Code"},
+        {"id":"AwsSolutions-COG4", "reason":"Using Lambda Authorizer and not Cognito user pool authorizer"},
         #{"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
-        {"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
         #{"id":"AwsSolutions-SNS2", "reason":"Sample Code"},
         #{"id":"AwsSolutions-SNS3", "reason":"Sample Code"},
         #{"id":"AwsSolutions-SF2", "reason":"Sample Code"},
+
         # Suppress warnings
-        {"id":"AwsSolutions-APIG3", "reason":"Sample Code"},
+        {"id":"AwsSolutions-APIG3", "reason":"Not using WAF in this guidance but recommended for real-world use"},
         #{"id":"AwsSolutions-DDB3", "reason":"Sample Code"},
     ]
 )
