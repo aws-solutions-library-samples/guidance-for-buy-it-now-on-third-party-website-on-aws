@@ -35,7 +35,7 @@ def get_product(product_id, headers):
     logger.info(f'Product Url: {get_product_url}')
     product_id_url = get_product_url+f"/{product_id}"
     logger.info(product_id_url)
-    product = requests.get(product_id_url, headers=get_auth_header(headers))
+    product = requests.get(product_id_url, headers=get_auth_header(headers), timeout=10)
     logger.info(f"JSON: {product.json()}")
     logger.info(f"TEXT: {product.text}")
     try:
@@ -51,7 +51,7 @@ def get_cart(cart_id, cart_url, headers):
     encoded_cart_id = requests.utils.quote(cart_id)
     cart_id_url = cart_url+f"/{encoded_cart_id}"
     logger.info(f'Cart ID URL: {cart_id_url}')
-    cart = requests.get(cart_id_url, headers=get_auth_header(headers))
+    cart = requests.get(cart_id_url, headers=get_auth_header(headers), timeout=10)
     response = cart.json()
     logger.info(f"Cart Data: {response}")
     return response
@@ -60,7 +60,7 @@ def get_cart(cart_id, cart_url, headers):
 def get_stores(stores_url, headers):
     logger.info(f'Stores Url: {stores_url}')
     logger.info(f'All Stores URL: {stores_url}')
-    stores = requests.get(stores_url, headers=get_auth_header(headers))
+    stores = requests.get(stores_url, headers=get_auth_header(headers), timeout=10)
     response = stores.json()
     logger.info(f"Stores Data: {response}")
     return response
@@ -120,11 +120,11 @@ def create_3p_order(secretsmanager_client, payment, shipping, headers, create_or
     if (valid_header):
         logger.info(f"header valid")
         response = requests.post(
-            create_order_url, json=json_body, headers=add_auth_header(valid_header, headers))
+            create_order_url, json=json_body, headers=add_auth_header(valid_header, headers), timeout=10)
             #create_order_url, json=json_body, headers=valid_header)
     else:
         logger.info(f"header invalid")
-        response = requests.post(create_order_url, json=json_body, headers=get_auth_header(headers))
+        response = requests.post(create_order_url, json=json_body, headers=get_auth_header(headers), timeout=10)
 
     response_json = response.json()
     logger.info(f"order response: {response_json}")
@@ -139,7 +139,7 @@ def pre_order(cart_id, headers, pre_order_url):
     logger.info(f"pre_order body: {json_body}")
     logger.info(f"HEADERS {headers}")
     response = None
-    response = requests.post(pre_order_url, json=json_body, headers=get_auth_header(headers))
+    response = requests.post(pre_order_url, json=json_body, headers=get_auth_header(headers), timeout=10)
 
     response_json = response.json()
     logger.info(f"pre_order payment response: {response_json}")
@@ -172,11 +172,11 @@ def validate_payment(secretsmanager_client, payment, headers, payment_processor_
     if (valid_header):
         logger.info(f"header valid")
         response = requests.post(payment_processor_url,
-                               json=json_body, headers=add_auth_header(valid_header, headers))
+                               json=json_body, headers=add_auth_header(valid_header, headers), timeout=10)
                                #json=json_body, headers=valid_header)
     else:
         logger.info(f"header invalid")
-        response = requests.post(payment_processor_url, json=json_body, headers=get_auth_header(headers))
+        response = requests.post(payment_processor_url, json=json_body, headers=get_auth_header(headers), timeout=10)
 
     response_json = response.json()
     logger.info(f"payment response: {response_json}")
