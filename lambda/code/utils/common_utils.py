@@ -87,8 +87,8 @@ def validate_payment_appid_apptoken(secretsmanager_client, appid, apptoken):
     # to validate the payment and billing details
     app_id = get_or_create_secret(secretsmanager_client, appid)
     app_token = get_or_create_secret(secretsmanager_client, apptoken)
-    logger.info(
-        f"SECRET app_id[{appid}]: {app_id}, app_token[{apptoken}]: {app_token}")
+    #logger.info(
+    #    f"SECRET app_id[{appid}]: {app_id}, app_token[{apptoken}]: {app_token}")
     response = True
     return response
 
@@ -99,8 +99,8 @@ def create_3p_order(secretsmanager_client, payment, shipping, headers, create_or
     app_id = get_or_create_secret(secretsmanager_client, payment["app_id"])
     app_token = get_or_create_secret(
         secretsmanager_client, payment["app_token"])
-    logger.info(
-        f"SECRET app_id[{payment['app_id']}]: {app_id}, app_token[{payment['app_token']}]: {app_token}")
+    #logger.info(
+    #    f"SECRET app_id[{payment['app_id']}]: {app_id}, app_token[{payment['app_token']}]: {app_token}")
     json_body = {
        payment["app_id"]: app_id,
        payment["app_token"]: app_token,
@@ -152,8 +152,8 @@ def validate_payment(secretsmanager_client, payment, headers, payment_processor_
     app_id = get_or_create_secret(secretsmanager_client, payment["app_id"])
     app_token = get_or_create_secret(
         secretsmanager_client, payment["app_token"])
-    logger.info(
-        f"SECRET app_id[{payment['app_id']}]: {app_id}, app_token[{payment['app_token']}]: {app_token}")
+    #logger.info(
+    #    f"SECRET app_id[{payment['app_id']}]: {app_id}, app_token[{payment['app_token']}]: {app_token}")
     json_body = {
        payment["app_id"]: app_id,
        payment["app_token"]: app_token
