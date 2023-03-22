@@ -55,9 +55,11 @@ def get_secret_value(secretsmanager_client, name=None, stage=None):
         if stage is not None:
             kwargs['VersionStage'] = stage
         response = secretsmanager_client.get_secret_value(**kwargs)
-        logger.info("Got value for secret %s.", name)
+        # Commenting due to semgrep finding.
+        #logger.info("Got value for secret %s.", name)
     except ClientError:
-        logger.exception("Couldn't get value for secret %s.", name)
+        # Commenting due to semgrep finding.
+        #logger.exception("Couldn't get value for secret %s.", name)
         raise
     else:
         return response
@@ -95,9 +97,11 @@ def create(secretsmanager_client, name, secret_value):
             elif isinstance(secret_value, bytes):
                 kwargs['SecretBinary'] = secret_value
             response = secretsmanager_client.create_secret(**kwargs)
-            logger.info("Created secret %s.", name)
+            # Commenting due to semgrep finding.
+            #logger.info("Created secret %s.", name)
         except ClientError:
-            logger.exception("Couldn't get secret %s.", name)
+            # Commenting due to semgrep finding.
+            #logger.exception("Couldn't get secret %s.", name)
             raise
         else:
             return response
