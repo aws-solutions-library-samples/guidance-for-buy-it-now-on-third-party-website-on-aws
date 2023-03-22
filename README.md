@@ -286,7 +286,7 @@ curl https://<UNIQUE ID>.execute-api.<REGION>.amazonaws.com/prod/order_manager/ 
 EOF
 ``` 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The above command will start a step function that does the steps shown in the diagram below.
-![Step Function Image](/assets/images/stepfunctions_graph_light.png)
+![Step Function Image](/assets/images/stepfunctions_graph.svg)
 
 ### Step function steps:
 The step function is used to manage the various steps that need to occur when an order is placed. We use the step "Order Exception Handler" to handle failure scenarios. In this guidance, we update the order status as FAILED in the DynamoDB when this step is triggered. This step will also send a failure email if you have subscribed to the SNS Topic.
