@@ -55,7 +55,7 @@ $ source .venv/bin/activate
 ```
 4. Once the virtualenv is activated, you can install the required dependencies.
 ```
-$ pip install -r requirements.txt
+$ python3 -m pip install -r requirements.txt
 ```
 
 5. At this point you can view the available stacks to deploy using the command
