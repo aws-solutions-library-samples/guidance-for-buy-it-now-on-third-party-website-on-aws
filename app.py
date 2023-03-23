@@ -12,8 +12,12 @@ from guidance_for_buy_it_now_on_third_party_website_on_aws.guidance_mock_stack i
 
 
 app = cdk.App()
-buy_it_now_stack = GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(app, "guidance-for-buy-it-now-on-third-party-website-on-aws")
-third_party_stack = MockStack(app)
+description = "Guidance for Buy-it-Now on third party websites on AWS (SO9191)"
+thirdparty_description = "Thirdparty Stack - Guidance for Buy-it-Now on third party websites on AWS (SO9191)"
+buy_it_now_stack = GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(app, 
+                        "guidance-for-buy-it-now-on-third-party-website-on-aws",
+                        description=description)
+third_party_stack = MockStack(app, "Thirdparty-MockStack", description=thirdparty_description)
 Aspects.of(app).add(AwsSolutionsChecks(verbose=True))
 NagSuppressions.add_stack_suppressions(
     stack=third_party_stack, 

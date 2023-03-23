@@ -15,6 +15,7 @@ from aws_cdk import (
 from cdk_nag import (
     NagSuppressions
 )
+from constructs import Construct
 # This stack is used to mock third party services used in this guidance.
 # The following resources are created:
 # * Payment Gateway URL - Used to validate payment details
@@ -22,8 +23,8 @@ from cdk_nag import (
 # * Order Gateway URL - Used to place order to third party store api endpoint
 # * StoreProduct DynamoDB table - This stores the product details from multiple stores
 class MockStack(Stack):
-    def __init__(self, scope):
-        super().__init__(scope, "Thirdparty-MockStack")
+    def __init__(self, scope: Construct, construct_id: str, description: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, description=description, **kwargs)
 
         log_group = logs.LogGroup(self, "BuyitNow-Mock-ApiGatewayAccessLogs")
         lambda_role = iam.Role(self, "ThirdPartyCustomAuthLambdaRole",

@@ -39,8 +39,8 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
     request_validator = None
     buyitnow_table = None
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
-        super().__init__(scope, construct_id, **kwargs)
+    def __init__(self, scope: Construct, construct_id: str, description: str, **kwargs) -> None:
+        super().__init__(scope, construct_id, description=description, **kwargs)
         lambdaLayers = lambda_.LayerVersion(self, 'requests-powertools-layer',
                                             code=lambda_.AssetCode(
                                                 'lambda/layers/requests-powertools/'),
