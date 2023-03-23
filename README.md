@@ -212,7 +212,7 @@ EOF
 ### Buy-it-Now Process
 We are now ready to proceed with viewing the products, adding the products to be purchased into a cart, viewing the price of products from the 2 stores we created for testing and placing an order. The flow chart below shows the order process steps.
 
-![Order Process Steps](/assets/images/order_flowchart.png)
+![Order Process Steps](/assets/images/order_flowchart.svg)
 
 1. The customer navigating to the CPG brand site will see all the products available using the command below. The output should show the 2 sample products we added.
 ```
