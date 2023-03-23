@@ -593,11 +593,15 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                 ],
                 effect=iam.Effect.ALLOW,
                 resources=[
-                    log_group.log_group_arn,
+                    "*"
                 ]
             )]
         )
         state_machine_log_policy.attach_to_role(sm.role)
+        self.cdknag_suppress_iam5_with_reason(state_machine_log_policy, f"/^Resource::*$/g",
+                reason=f"Only suppresses AwsSolutions-IAM5 'Resource::*' finding on state machine log policy.\
+                        As per https://docs.aws.amazon.com/step-functions/latest/dg/cw-logs.html, \
+                        we have to use Resource::* for state machine log policy")
         xray_policy = iam.Policy(self, 'BuyitNowCustomStateMachineXrayPolicy', statements=[
             iam.PolicyStatement(
                 actions=["xray:GetSamplingRules",
@@ -700,6 +704,16 @@ class GuidanceForBuyItNowOnThirdPartyWebsiteOnAwsStack(Stack):
                 "reason": f"Only suppresses AwsSolutions-IAM5 {regex}",
                 "applies_to": [{
                     "regex":f"/^Resource::{regex}$/g"
+                }],
+            }
+        ])
+    def cdknag_suppress_iam5_with_reason(self, suppress_policy, regex, reason):
+        NagSuppressions.add_resource_suppressions(suppress_policy, suppressions=[
+            {
+                "id": 'AwsSolutions-IAM5',
+                "reason": reason,
+                "applies_to": [{
+                    "regex": regex
                 }],
             }
         ])
