@@ -26,7 +26,9 @@ NagSuppressions.add_stack_suppressions(
         #{"id":"AwsSolutions-APIG2", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-APIG6", "reason":"Sample Code"},
-        {"id":"AwsSolutions-COG4", "reason":"Using Lambda Authorizer and not Cognito user pool authorizer"},
+        #{"id":"AwsSolutions-COG4", "reason":"Using Lambda Authorizer and not Cognito user pool authorizer"},
+        #{"id":"AwsSolutions-COG1", "reason":"Sample Code"},
+        #{"id":"AwsSolutions-COG3", "reason":"Sample Code"},
         #{"id":"AwsSolutions-IAM4", "reason":"Sample Code"},
         #{"id":"AwsSolutions-IAM5", "reason":"Sample Code"},
 

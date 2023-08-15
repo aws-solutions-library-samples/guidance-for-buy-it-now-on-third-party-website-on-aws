@@ -11,50 +11,87 @@ from aws_cdk import (
     aws_iam as iam,
     Aws,
     ArnFormat,
+    aws_cognito as cognito,
 )
 from cdk_nag import (
     NagSuppressions
 )
 from constructs import Construct
+import aws_cdk.aws_cognito as cognito
+from aws_cdk.aws_cognito import (
+    AdvancedSecurityMode
+)
+
 # This stack is used to mock third party services used in this guidance.
 # The following resources are created:
 # * Payment Gateway URL - Used to validate payment details
 # * Pre-Order Gateway URL - Used to lock inventory at the start of the order process
 # * Order Gateway URL - Used to place order to third party store api endpoint
 # * StoreProduct DynamoDB table - This stores the product details from multiple stores
+
+
 class MockStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, description: str, **kwargs) -> None:
         super().__init__(scope, construct_id, description=description, **kwargs)
+        user_pool = cognito.UserPool(self, "ThirdPartyUserPool",
+                                     password_policy=cognito.PasswordPolicy(
+                                         min_length=8,
+                                         require_lowercase=True,
+                                         require_uppercase=True,
+                                         require_digits=True,
+                                         require_symbols=True,
+                                         temp_password_validity=Duration.days(
+                                             3)
+                                     ),
+                                     advanced_security_mode=AdvancedSecurityMode.ENFORCED,
+                                     )
+        user_pool.add_client(
+            "ThirdPartyUserPoolClient", auth_flows=cognito.AuthFlow(user_password=True))
+        auth = apigateway_.CognitoUserPoolsAuthorizer(self, "ThirdPartyCognitoUserPoolsAuthorizer",
+                                                      cognito_user_pools=[user_pool])
+
+        # identity_pool = cognito.CfnIdentityPool(self, "IdentityPool",
+        #    allow_unauthenticated_identities=True
+        # )
+        # anonymous_role = iam.Role(self, "BuyitNowAnonymousUserRole",
+        #    assumed_by=iam.ServicePrincipal("cognito-identity.amazonaws.com"),
+        #    managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")],
+        # )
+        # cfn_identity_pool_role_attachment = cognito.CfnIdentityPoolRoleAttachment(self, "MyCfnIdentityPoolRoleAttachment",
+        #    identity_pool_id=identity_pool.ref,
+        #    roles={"authenticated": anonymous_role.role_arn}
+        # )
 
         log_group = logs.LogGroup(self, "BuyitNow-Mock-ApiGatewayAccessLogs")
         lambda_role = iam.Role(self, "ThirdPartyCustomAuthLambdaRole",
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
-            description="Custom Authentication Lambda role for ThirdParty stack"
-        )
+                               assumed_by=iam.ServicePrincipal(
+                                   "lambda.amazonaws.com"),
+                               description="Custom Authentication Lambda role for ThirdParty stack"
+                               )
         # Lambda auth function
         auth_function = lambda_.Function(self, "ThirdpartyAuthTokenLambda",
-                                          code=lambda_.Code.from_asset(
-                                              './lambda/code/utils'),
-                                          handler="api_gateway_authorizer.handler",
-                                          runtime=lambda_.Runtime.NODEJS_18_X,
-                                          role=lambda_role)
+                                         code=lambda_.Code.from_asset(
+                                             './lambda/code/utils'),
+                                         handler="api_gateway_authorizer.handler",
+                                         runtime=lambda_.Runtime.NODEJS_18_X,
+                                         role=lambda_role)
         lambda_auth_policy = iam.Policy(self, 'ThirdPartyLambdaAuthPolicy', statements=[
             iam.PolicyStatement(
                 actions=["logs:CreateLogGroup",
-                    "logs:CreateLogStream",
-                    "logs:PutLogEvents"],
+                         "logs:CreateLogStream",
+                         "logs:PutLogEvents"],
                 effect=iam.Effect.ALLOW,
                 resources=[
                     Stack.of(self).format_arn(
                         service="logs",
                         arn_format=ArnFormat.COLON_RESOURCE_NAME,
-                        resource="log-group", 
+                        resource="log-group",
                         resource_name="/aws/lambda/"+auth_function.function_name
                     ),
                     Stack.of(self).format_arn(
                         service="logs",
                         arn_format=ArnFormat.COLON_RESOURCE_NAME,
-                        resource="log-group", 
+                        resource="log-group",
                         resource_name="/aws/lambda/"+auth_function.function_name+":*"
                     ),
                 ]
@@ -67,42 +104,46 @@ class MockStack(Stack):
                 "reason": f"Only suppresses AwsSolutions-IAM5 /aws/lambda/{auth_function.function_name}:* \
                             This is needed to allow the role to create log streams inside the log group",
                 "applies_to": [{
-                    "regex":f"/^Resource::arn:<[A-Za-z:]+>:logs:<[A-Za-z:]+>:<[A-Za-z:]+>:log-group:/aws/lambda/{auth_function.function_name}:\*$/g"
+                    "regex": f"/^Resource::arn:<[A-Za-z:]+>:logs:<[A-Za-z:]+>:<[A-Za-z:]+>:log-group:/aws/lambda/{auth_function.function_name}:\*$/g"
                 }],
             }
         ])
 
-        lambda_authorizer = apigateway_.TokenAuthorizer(self, "ThirdpartyAuthorizer", 
-                                                        handler=auth_function, 
-                                                        results_cache_ttl=Duration.seconds(0))
+        # lambda_authorizer = apigateway_.TokenAuthorizer(self, "ThirdpartyAuthorizer",
+        #                                                handler=auth_function,
+        #                                                results_cache_ttl=Duration.seconds(0))
         rest_api = RestApi(self, "ThirdParty-MockStack-RestApi",
-                                cloud_watch_role=False,
-                                deploy=True,
-                                deploy_options=apigateway_.StageOptions(
-                                    logging_level=apigateway_.MethodLoggingLevel.INFO,
-                                    metrics_enabled=True,
-                                    access_log_destination=apigateway_.LogGroupLogDestination(log_group),
-                                    access_log_format=apigateway_.AccessLogFormat.custom(f"{apigateway_.AccessLogField.context_request_id()} \
-                                        {apigateway_.AccessLogField.context_identity_source_ip()} \
-                                        {apigateway_.AccessLogField.context_http_method()} \
-                                        {apigateway_.AccessLogField.context_error_message()} \
-                                        {apigateway_.AccessLogField.context_error_message_string()}")
-                                ),
-                                default_method_options={"authorizer": lambda_authorizer, "authorization_type": apigateway_.AuthorizationType.CUSTOM},
-                            )
-        req_validator = rest_api.add_request_validator("MockRequestValidator", validate_request_parameters=True, validate_request_body=True)
+                           cloud_watch_role=False,
+                           deploy=True,
+                           deploy_options=apigateway_.StageOptions(
+                               logging_level=apigateway_.MethodLoggingLevel.INFO,
+                               metrics_enabled=True,
+                               access_log_destination=apigateway_.LogGroupLogDestination(
+                                   log_group),
+                               access_log_format=apigateway_.AccessLogFormat.custom(f"{apigateway_.AccessLogField.context_request_id()} \
+                                   {apigateway_.AccessLogField.context_identity_source_ip()} \
+                                   {apigateway_.AccessLogField.context_http_method()} \
+                                   {apigateway_.AccessLogField.context_error_message()} \
+                                   {apigateway_.AccessLogField.context_error_message_string()}")
+                           ),
+                           # default_method_options={"authorizer": lambda_authorizer, "authorization_type": apigateway_.AuthorizationType.CUSTOM},
+                           default_method_options={
+                               "authorizer": auth, "authorization_type": apigateway_.AuthorizationType.COGNITO},
+                           )
+        req_validator = rest_api.add_request_validator(
+            "MockRequestValidator", validate_request_parameters=True, validate_request_body=True)
         validate_payment_model = apigateway_.Model(self, id="ValidatePaymentModel",
-                         rest_api=rest_api,
-                         content_type="application/json",
-                         model_name="ValidatePaymentModel",
-                         schema=apigateway_.JsonSchema(
-                            schema=apigateway_.JsonSchemaVersion.DRAFT4,
-                            type=apigateway_.JsonSchemaType.OBJECT,
-                            properties={
-                                "APPID": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
-                                "APPTOKEN": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING)
-                            },
-                        ))
+                                                   rest_api=rest_api,
+                                                   content_type="application/json",
+                                                   model_name="ValidatePaymentModel",
+                                                   schema=apigateway_.JsonSchema(
+                                                       schema=apigateway_.JsonSchemaVersion.DRAFT4,
+                                                       type=apigateway_.JsonSchemaType.OBJECT,
+                                                       properties={
+                                                           "APPID": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
+                                                           "APPTOKEN": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING)
+                                                       },
+                                                   ))
         method = rest_api.root.add_resource("validate_payment").add_method("POST", MockIntegration(
             # This is the response that we send back to the front end method_response.
             # This is used to modify the response from request_templates
@@ -135,25 +176,26 @@ class MockStack(Stack):
                   value=f"https://{rest_api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/validate_payment"
                   )
         create_order_model = apigateway_.Model(self, id="CreateOrderModel",
-                         rest_api=rest_api,
-                         content_type="application/json",
-                         model_name="CreateOrderModel",
-                         schema=apigateway_.JsonSchema(
-                            schema=apigateway_.JsonSchemaVersion.DRAFT4,
-                            type=apigateway_.JsonSchemaType.OBJECT,
-                            properties={
-                                "APPID": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
-                                "APPTOKEN": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
-                                "shipping": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.OBJECT,
-                                    properties={
-                                        "name": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
-                                        "address": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING)
-                                    },
-                                    required=["name", "address"]
-                                )
-                            },
-                            required=["shipping"]
-                        ))
+                                               rest_api=rest_api,
+                                               content_type="application/json",
+                                               model_name="CreateOrderModel",
+                                               schema=apigateway_.JsonSchema(
+                                                   schema=apigateway_.JsonSchemaVersion.DRAFT4,
+                                                   type=apigateway_.JsonSchemaType.OBJECT,
+                                                   properties={
+                                                       "APPID": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
+                                                       "APPTOKEN": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
+                                                       "shipping": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.OBJECT,
+                                                                                          properties={
+                                                                                              "name": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
+                                                                                              "address": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING)
+                                                                                          },
+                                                                                          required=[
+                                                                                              "name", "address"]
+                                                                                          )
+                                                   },
+                                                   required=["shipping"]
+                                               ))
         rest_api.root.add_resource("create_order").add_method("POST", MockIntegration(
             # This is the response that we send back to the front end method_response.
             # This is used to modify the response from request_templates
@@ -186,17 +228,17 @@ class MockStack(Stack):
                   value=f"https://{rest_api.rest_api_id}.execute-api.{Aws.REGION}.amazonaws.com/prod/create_order"
                   )
         create_pre_order_model = apigateway_.Model(self, id="CreatePreOrderModel",
-                         rest_api=rest_api,
-                         content_type="application/json",
-                         model_name="CreatePreOrderModel",
-                         schema=apigateway_.JsonSchema(
-                            schema=apigateway_.JsonSchemaVersion.DRAFT4,
-                            type=apigateway_.JsonSchemaType.OBJECT,
-                            properties={
-                                "cart_id": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
-                            },
-                            required=["cart_id"]
-                        ))
+                                                   rest_api=rest_api,
+                                                   content_type="application/json",
+                                                   model_name="CreatePreOrderModel",
+                                                   schema=apigateway_.JsonSchema(
+                                                       schema=apigateway_.JsonSchemaVersion.DRAFT4,
+                                                       type=apigateway_.JsonSchemaType.OBJECT,
+                                                       properties={
+                                                           "cart_id": apigateway_.JsonSchema(type=apigateway_.JsonSchemaType.STRING),
+                                                       },
+                                                       required=["cart_id"]
+                                                   ))
         rest_api.root.add_resource("pre_order").add_method("POST", MockIntegration(
             # This is the response that we send back to the front end method_response.
             # This is used to modify the response from request_templates
