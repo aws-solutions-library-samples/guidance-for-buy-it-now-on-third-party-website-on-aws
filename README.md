@@ -104,6 +104,8 @@ In this section, we will first populate some test data and then we will go throu
 
 All REST api calls should have a header `Authorization` with value `allow`. The API Gateway uses Lambda Authorizer to authorize the request. In this guidance, we are using a simple authorizer that checks if the `Authorization` header has an `allow` value.
 
+NOTE: The `Authorization` header is an authentication bypass mechanism used in sample code. This should be replaced with a secure API authentication method. More details can be found at https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html
+
 ### Initialization of Products, Stores and Products in Stores
 
 <details>
